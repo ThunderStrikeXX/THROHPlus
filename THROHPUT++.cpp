@@ -878,7 +878,7 @@ int main() {
     std::vector<SparseBlock> L(N), D(N), R(N);
     std::vector<VecBlock> Q(N), X;
 
-    for(int i = 0; i < N; ++i){
+    for(int i = 1; i <= N - 2; ++i){
 
         const double k_w = steel::k(T_w_bulk[i]);                               ///< Wall thermal conductivity [W/(m K)]
         const double k_x = liquid_sodium::k(T_x_bulk[i]);                       ///< Liquid thermal conductivity [W/(m K)]
@@ -1041,6 +1041,7 @@ int main() {
         }
 
         // Mass mixture equation
+
         add(D[i], 0, 0,
             alpha_m[i] / dt
             + (alpha_m[i] * v_m[i] * H(v_m[i])
@@ -1060,8 +1061,7 @@ int main() {
         add(D[i], 0, 9, -C36);
         add(D[i], 0, 10, -C37);
 
-
-        Q_i[0] = C40  
+        Q[i][0] = C40  
                     + 2 * ( + alpha_m[i] * rho_m[i] * v_m[i] * H(v_m[i])
                             + alpha_m[i + 1] * rho_m[i + 1] * v_m[i] * (1 - H(v_m[i]))
                             - alpha_m[i - 1] * rho_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])
@@ -1107,7 +1107,7 @@ int main() {
         add(D[i], 1, 10, +C37);
 
 
-        Q_i[1] = -C40
+        Q[i][1] = -C40
             + 2 * (+alpha_l[i] * rho_l[i] * v_l[i] * H(v_l[i])
                 + alpha_l[i + 1] * rho_l[i + 1] * v_l[i] * (1 - H(v_l[i]))
                 - alpha_l[i - 1] * rho_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])
@@ -1227,32 +1227,32 @@ int main() {
         const double k_l_l = liquid_sodium::k(T_l[i - 1]);
         const double k_l_r = liquid_sodium::k(T_l[i + 1]);
 
-        add(D[i], 2, 0, -C57 - h_xv_v * C39 - C51);
+        add(D[i], 3, 0, -C57 - h_xv_v * C39 - C51);
 
-        add(D[i], 2, 1,
+        add(D[i], 3, 1,
             eps_v * 
                 (alpha_l[i] * T_l[i] * cp_l_p) / dt
                 + (alpha_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])) / dz
                 - (alpha_l[i] * cp_l_p * T_l[i] * v_l[i] * (1 - H(v_l[i - 1]))) / dz
                 + p_l[i] / dt);
 
-        add(D[i], 2, 3,
+        add(D[i], 3, 3,
             eps_v * (
                 T_l[i] * rho_l[i] * cp_l_p) / dt
                 + (rho_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])) / dz
                 - (rho_l[i] * cp_l_p * T_l[i] * v_l[i] * (1 - H(v_l[i - 1]))) / dz
                 + p_l[i] * (v_l[i] * H(v_l[i]) + v_l[i - 1] * H(v_l[i - 1])) / dz);
 
-        add(D[i], 2, 7, 
+        add(D[i], 3, 7, 
             eps_v* (
                 T_l[i] * cp_l_p * alpha_l[i] * rho_l[i]) / dt
                 + (alpha_l[i] * rho_l[i] * cp_l_p * T_l[i] * H(v_l[i]) + alpha_l[i + 1] * rho_l[i + 1] * cp_l_r * T_l[i + 1] * (1 - H(v_l[i]))) / dz
                 + p_l[i] * (alpha_l[i] * H(v_l[i]) + alpha_l[i + 1] * (1 - H(v_l[i]))) / dz);
 
-        add(D[i], 2, 8, 
+        add(D[i], 3, 8, 
             -C56 - h_vx_x * C38 - C50);
 
-        add(D[i], 2, 9,
+        add(D[i], 3, 9,
             eps_v * (
                 + alpha_l[i] * rho_l[i] * cp_l_p * v_l[i] * H(v_l[i])) / dz
                 - (alpha_l[i] * rho_l[i] * cp_l_p * v_l[i] * (1 - H(v_l[i - 1]))) / dz
@@ -1261,10 +1261,10 @@ int main() {
                 - C44 - h_xv_v * C38
             - C54 - C48 - h_vx_x * C36);
 
-        add(D[i], 2, 10, 
+        add(D[i], 3, 10, 
             -C55 - h_vx_x * C37 - C49);
 
-        Q_i[2] = 
+        Q[i][2] = 
             eps_v * (
                 + 3 * (alpha_l[i] * T_l[i] * rho_l[i]) / dt
                 + 3 * (
@@ -1282,16 +1282,16 @@ int main() {
                 + p_l[i] * alpha_l[i] / dt)
             + C52 + C58 + h_vx_x * C40;
 
-        add(L[i], 2, 1,
+        add(L[i], 3, 1,
             eps_v * (
             -(alpha_l[i - 1] * cp_l_l * T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz));
 
-        add(L[i], 2, 3,
+        add(L[i], 3, 3,
             eps_v * (
                 (rho_l[i - 1] * cp_l_l* T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz
                 + p_l[i] * (v_l[i - 1] * H(v_l[i - 1])) / dz));
 
-        add(L[i], 2, 7,
+        add(L[i], 3, 7,
             eps_v * (
                 -(
                     +alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * T_l[i - 1] * H(v_l[i - 1])
@@ -1302,21 +1302,21 @@ int main() {
                 + alpha_l[i] * (1 - H(v_l[i - 1]))
                 ) / dz));
 
-        add(L[i], 2, 9,
+        add(L[i], 3, 9,
             eps_v * (
             -(alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * v_l[i - 1] * H(v_l[i - 1])) / dz
             - (alpha_l[i - 1] * k_l_l * H(v_l[i - 1]) + alpha_l[i] * k_l_p * (1 - H(v_l[i - 1]))) / (dz * dz)));
 
-        add(R[i], 2, 1,
+        add(R[i], 3, 1,
             eps_v * (
             (alpha_l[i + 1] * cp_l_r* T_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz));
 
-        add(R[i], 2, 3,
+        add(R[i], 3, 3,
             eps_v * (
             (rho_l[i + 1] * cp_l_r* T_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz
             + p_l[i] * (v_l[i] * (1 - H(v_l[i]))) / dz));
 
-        add(R[i], 2, 9,
+        add(R[i], 3, 9,
             eps_v * (
                 (alpha_l[i + 1] * rho_l[i + 1] * cp_l_r* v_l[i] * (1 - H(v_l[i]))) / dz
                 - (alpha_l[i] * k_l_p * H(v_l[i]) + alpha_l[i + 1] * k_l_r * (1 - H(v_l[i]))) / (dz * dz)));
@@ -1349,7 +1349,7 @@ int main() {
             - (C55 / C53) * C64
             + (k_w_lf + k_w_rf) / (dz * dz));
 
-        Q_i[4] =
+        Q[i][4] =
             q_pp * 2 * r_o / (r_o * r_o - r_i * r_i)
             + (rho_w_p * cp_w_p * T_w[i]) / dt
             + C58 * C64 / C53;
@@ -1383,7 +1383,7 @@ int main() {
             + (fm * rho_m[i] * std::abs(v_m[i]) * H(v_m[i])) / (4 * r_v)
             + (fm * rho_m[i + 1] * std::abs(v_m[i]) * (1 - H(v_m[i]))) / (4 * r_v));
 
-        Q_i[5] = 
+        Q[i][5] = 
             + 3 * (alpha_m[i] * rho_m[i] * v_m[i]) / dt
             - 3 * (rho_m[i] * alpha_m[i] * v_m[i] * v_m[i] * H(v_m[i])) / dz
             - 3 * (rho_m[i + 1] * alpha_m[i + 1] * v_m[i] * v_m[i] * (1 - H(v_m[i]))) / dz
@@ -1434,7 +1434,7 @@ int main() {
             + (fl * rho_l[i] * std::abs(v_l[i]) * H(v_l[i])) / (4 * r_v)
             + (fl * rho_l[i + 1] * std::abs(v_l[i]) * (1 - H(v_l[i]))) / (4 * r_v));
 
-        Q_i[6] =
+        Q[i][6] =
             + 3 * eps_v * (alpha_l[i] * rho_l[i] * v_l[i]) / dt
             - 3 * eps_v * (rho_l[i] * alpha_l[i] * v_l[i] * v_l[i] * H(v_l[i])) / dz
             - 3 * eps_v * (rho_l[i + 1] * alpha_l[i + 1] * v_l[i] * v_l[i] * (1 - H(v_l[i]))) / dz
@@ -1464,115 +1464,120 @@ int main() {
 
         // State mixture equation
 
-        add(D[i], 7, 0, -T_m[i] * Rv);
-        add(D[i], 7, 8, -rho_m[i] * Rv);
+        add(D[i], 7, 0, 
+            -T_m[i] * Rv);
 
-        Q_i[7] = -rho_m[i] * T_m[i] * Rv;
+        add(D[i], 7, 4
+            1.0);
+
+        add(D[i], 7, 8, 
+            -rho_m[i] * Rv);
+
+        Q[i][7] = -rho_m[i] * T_m[i] * Rv;
 
         // State liquid equation
 
-        add(D[i], 8, 1, 1);
-        add(D[i], 8, 9, C62);
+        add(D[i], 8, 1, 
+            1.0);
 
-        Q_i[8] = C63;
+        add(D[i], 8, 9, 
+            C62);
+
+        Q[i][8] = C63;
 
         // Volume fraction sum
 
-        add(D[i], 9, 2, 1);
-        add(D[i], 9, 3, 1);
+        add(D[i], 9, 2, 
+            1.0);
 
-        Q_i[9] = 1;
+        add(D[i], 9, 3, 
+            1.0);
+
+        Q[i][9] = 1.0;
 
         // Capillary equation
 
         add(D[i], 10, 4, 1);
         add(D[i], 10, 5, -1);
 
-        Q_i[10] = DPcap;
+        Q[i][10] = DPcap;
     }
 
     // First node boundary conditions
 
-    SparseBlock Diag_first, Right_first;
-    VecBlock Q_first{};
+    add(D[0], 0, 0, 1.0);
+    add(D[0], 1, 1, 1.0);
+    add(D[0], 2, 2, 1.0);
+    add(D[0], 3, 3, 1.0);
+    add(D[0], 4, 4, 1.0);
+    add(D[0], 5, 5, 1.0);
+    add(D[0], 6, 6, 1.0);
+    add(D[0], 7, 7, 1.0);
+    add(D[0], 8, 8, 1.0);
+    add(D[0], 9, 9, 1.0);
+    add(D[0], 10, 10, 1.0);
 
-    add(Diag_first, 0, 0, 1.0);
-    add(Diag_first, 1, 1, 1.0);
-    add(Diag_first, 2, 2, 1.0);
-    add(Diag_first, 3, 3, 1.0);
-    add(Diag_first, 4, 4, 1.0);
-    add(Diag_first, 5, 5, 1.0);
-    add(Diag_first, 6, 6, 1.0);
-    add(Diag_first, 7, 7, 1.0);
-    add(Diag_first, 8, 8, 1.0);
-    add(Diag_first, 9, 9, 1.0);
-    add(Diag_first, 10, 10, 1.0);
+    add(R[0], 0, 0, -1.0);
+    add(R[0], 1, 1, -1.0);
+    add(R[0], 2, 2, -1.0);
+    add(R[0], 3, 3, -1.0);
+    add(R[0], 4, 4, -1.0);
+    add(R[0], 5, 5, -1.0);
+    add(R[0], 6, 6, 0.0);
+    add(R[0], 7, 7, 0.0);
+    add(R[0], 8, 8, -1.0);
+    add(R[0], 9, 9, -1.0);
+    add(R[0], 10, 10, -1.0);
 
-    add(Right_first, 0, 0, -1.0);
-    add(Right_first, 1, 1, -1.0);
-    add(Right_first, 2, 2, -1.0);
-    add(Right_first, 3, 3, -1.0);
-    add(Right_first, 4, 4, -1.0);
-    add(Right_first, 5, 5, -1.0);
-    add(Right_first, 6, 6, 0.0);
-    add(Right_first, 7, 7, 0.0);
-    add(Right_first, 8, 8, -1.0);
-    add(Right_first, 9, 9, -1.0);
-    add(Right_first, 10, 10, -1.0);
-
-    Q_first[0] = 0.0;
-    Q_first[1] = 0.0;
-    Q_first[2] = 0.0;
-    Q_first[3] = 0.0;
-    Q_first[4] = 0.0;
-    Q_first[5] = 0.0;
-    Q_first[6] = 0.0;
-    Q_first[7] = 0.0;
-    Q_first[8] = 0.0;
-    Q_first[9] = 0.0;
-    Q_first[10] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
+    Q[0][0] = 0.0;
 
     // Last node boundary conditions
 
-    SparseBlock Diag_last, Left_last;
-    VecBlock Q_last{};
+    add(D[N - 1], 0, 0, 1.0);
+    add(D[N - 1], 1, 1, 1.0);
+    add(D[N - 1], 2, 2, 1.0);
+    add(D[N - 1], 3, 3, 1.0);
+    add(D[N - 1], 4, 4, 1.0);
+    add(D[N - 1], 5, 5, 1.0);
+    add(D[N - 1], 6, 6, 1.0);
+    add(D[N - 1], 7, 7, 1.0);
+    add(D[N - 1], 8, 8, 1.0);
+    add(D[N - 1], 9, 9, 1.0);
+    add(D[N - 1], 10, 10, 1.0);
 
-    add(Diag_last, 0, 0, 1.0);
-    add(Diag_last, 1, 1, 1.0);
-    add(Diag_last, 2, 2, 1.0);
-    add(Diag_last, 3, 3, 1.0);
-    add(Diag_last, 4, 4, 1.0);
-    add(Diag_last, 5, 5, 1.0);
-    add(Diag_last, 6, 6, 1.0);
-    add(Diag_last, 7, 7, 1.0);
-    add(Diag_last, 8, 8, 1.0);
-    add(Diag_last, 9, 9, 1.0);
-    add(Diag_last, 10, 10, 1.0);
+    add(L[N - 1], 0, 0, -1.0);
+    add(L[N - 1], 1, 1, -1.0);
+    add(L[N - 1], 2, 2, -1.0);
+    add(L[N - 1], 3, 3, -1.0);
+    add(L[N - 1], 4, 4, -1.0);
+    add(L[N - 1], 5, 5, -1.0);
+    add(L[N - 1], 6, 6, 0.0);
+    add(L[N - 1], 7, 7, 0.0);
+    add(L[N - 1], 8, 8, -1.0);
+    add(L[N - 1], 9, 9, -1.0);
+    add(L[N - 1], 10, 10, -1.0);
 
-    add(Left_last, 0, 0, -1.0);
-    add(Left_last, 1, 1, -1.0);
-    add(Left_last, 2, 2, -1.0);
-    add(Left_last, 3, 3, -1.0);
-    add(Left_last, 4, 4, -1.0);
-    add(Left_last, 5, 5, -1.0);
-    add(Left_last, 6, 6, 0.0);
-    add(Left_last, 7, 7, 0.0);
-    add(Left_last, 8, 8, -1.0);
-    add(Left_last, 9, 9, -1.0);
-    add(Left_last, 10, 10, -1.0);
-
-    Q_last[0] = 0.0;
-    Q_last[1] = 0.0;
-    Q_last[2] = 0.0;
-    Q_last[3] = 0.0;
-    Q_last[4] = 0.0;
-    Q_last[5] = 0.0;
-    Q_last[6] = 0.0;
-    Q_last[7] = 0.0;
-    Q_last[8] = 0.0;
-    Q_last[9] = 0.0;
-    Q_last[10] = 0.0;
+    Q[N - 1][0] = 0.0;
+    Q[N - 1][1] = 0.0;
+    Q[N - 1][2] = 0.0;
+    Q[N - 1][3] = 0.0;
+    Q[N - 1][4] = 0.0;
+    Q[N - 1][5] = 0.0;
+    Q[N - 1][6] = 0.0;
+    Q[N - 1][7] = 0.0;
+    Q[N - 1][8] = 0.0;
+    Q[N - 1][9] = 0.0;
+    Q[N - 1][10] = 0.0;
 
     solve_block_tridiag(L, D, R, Q, X);
-
 }
