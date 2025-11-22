@@ -953,11 +953,11 @@ int main() {
 
         const double C1 = 2 * k_w * (r_o - r_i) * alpha;
         const double C2 = (Evi1 - r_i) / (Ex4 - Evi1 * Ex3);
-        const double C3 = C1 + C2 * Ex3;
-        const double C4 = -C1;
-        const double C5 = -C2 * Ex6 - C2 * Ex7 * rho_m[i] * Rv;
-        const double C6 = -C2 * Ex7 * Rv * T_m[i];
-        const double C7 = -q_pp + C1 * q_pp * (Eio1 - r_i) - C2 * Ex8 + C2 * Ex7 * rho_m[i] * T_m[i] * Rv;
+        const double C3 = (C1 + C2 * Ex3) / C65;
+        const double C4 = -C1 / C65;
+        const double C5 = (-C2 * Ex6 - C2 * Ex7 * rho_m[i] * Rv) / C65;
+        const double C6 = (-C2 * Ex7 * Rv * T_m[i]) / C65;
+        const double C7 = (-q_pp + C1 * q_pp * (Eio1 - r_i) - C2 * Ex8 + C2 * Ex7 * rho_m[i] * T_m[i] * Rv) / C65;
         const double C8 = alpha + C2 * Ex3 + alpha * gamma * C3;
         const double C9 = -alpha + alpha * gamma * C4;
         const double C10 = -C2 * Ex6 - C2 * Ex7 * Rv * rho_m[i] + alpha * gamma * C5;
@@ -990,7 +990,7 @@ int main() {
         const double C37 = bGamma * C32 + bGamma * r_v * C27 + bGamma * r_v * r_v * C4;
         const double C38 = bGamma * C33 + bGamma * r_v * C28 + bGamma * r_v * r_v * C5 + cGamma * Rv * rho_m[i];
         const double C39 = bGamma * C34 + bGamma * r_v * C29 + bGamma * r_v * r_v * C6 + cGamma * Rv * T_m[i];
-        const double C40 = aGamma + C35 + bGamma * r_v * C30 + bGamma * r_v * r_v * C7 - 2 * cGamma * Rv * T_m[i] * rho_m[i];
+        const double C40 = aGamma + bGamma * C35 + bGamma * r_v * C30 + bGamma * r_v * r_v * C7 - 2 * cGamma * Rv * T_m[i] * rho_m[i];
         const double C41 = 2 * H_xm * r_v / (r_i * r_i);
         const double C42 = C41 * C31 + C41 * C26 * r_v + C41 * C3 * r_v * r_v;
         const double C43 = C41 * C32 + C41 * C27 * r_v + C41 * C4 * r_v * r_v;
@@ -1015,6 +1015,7 @@ int main() {
         const double C62 = -1.0 / Tc * (C60 + C61 / (2 * std::sqrt(1 - T_l[i] / Tc)));
         const double C63 = C59 + C60 * (1.0 - T_l[i] / Tc) + C61 * std::sqrt(1.0 - T_l[i] / Tc) + T_l[i] / Tc * (C60 + C61 / (2 * std::sqrt(1.0 - T_l[i] / Tc)));
         const double C64 = -k_w * 2 * r_i / (r_o * r_o - r_i * r_i);
+        const double C65 = -C1 * gamma + (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) * k_x - 2 * r_i * k_x;
 
         // DPcap evaluation
 
