@@ -868,17 +868,17 @@ int main() {
 
     #pragma endregion
 
-    std::vector<double> rho_m(N, 0.0);
-    std::vector<double> rho_l(N, 0.0);
-    std::vector<double> alpha_m(N, 0.0);
-    std::vector<double> alpha_l(N, 0.0);
-    std::vector<double> p_m(N, 0.0);
-    std::vector<double> p_l(N, 0.0);
-    std::vector<double> v_m(N + 1, 0.0);
-    std::vector<double> v_l(N + 1, 0.0);
-    std::vector<double> T_m(N, 0.0);
-    std::vector<double> T_l(N, 0.0);
-    std::vector<double> T_w(N, 0.0);
+    std::vector<double> rho_m(N, 0.01);
+    std::vector<double> rho_l(N, 700);
+    std::vector<double> alpha_m(N, 0.9);
+    std::vector<double> alpha_l(N, 0.1);
+    std::vector<double> p_m(N, 10000);
+    std::vector<double> p_l(N, 10000);
+    std::vector<double> v_m(N + 1, 1.0);
+    std::vector<double> v_l(N + 1, 0.01);
+    std::vector<double> T_m(N, 800);
+    std::vector<double> T_l(N, 800);
+    std::vector<double> T_w(N, 800);
 
     std::vector<double> Gamma_xv(N, 0.0);
 
