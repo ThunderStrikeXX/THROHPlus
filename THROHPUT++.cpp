@@ -166,7 +166,7 @@ namespace liquid_sodium {
     }
 
     double surf_ten(double T) {
-        return (200.6 - 0.0986 * (T + 273.15)) * 1e-3;
+        return (200.6 - 0.0986 * (T - 273.15)) * 1e-3;
     }
 }
 
@@ -1065,7 +1065,7 @@ int main() {
         add(D[i], 0, 2,
             rho_m[i] / dt
             + (rho_m[i] * v_m[i] * H(v_m[i])
-            - rho_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz);
+            - rho_m[i - 1] * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz);
 
         add(D[i], 0, 6,
             (alpha_m[i] * rho_m[i] * H(v_m[i])
@@ -1110,7 +1110,7 @@ int main() {
         add(D[i], 1, 3,
             eps_v * rho_l[i] / dt
             + eps_v * (rho_l[i] * v_l[i] * H(v_l[i])
-            - eps_v * rho_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
+            - eps_v * rho_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
 
         add(D[i], 1, 7,
             eps_v * (alpha_l[i] * rho_l[i] * H(v_l[i])
@@ -1122,7 +1122,8 @@ int main() {
 
 
         Q[i][1] = -C40
-            + 2 * eps_v * (+alpha_l[i] * rho_l[i] * v_l[i] * H(v_l[i])
+            + 2 * eps_v * (
+                + alpha_l[i] * rho_l[i] * v_l[i] * H(v_l[i])
                 + alpha_l[i + 1] * rho_l[i + 1] * v_l[i] * (1 - H(v_l[i]))
                 - alpha_l[i - 1] * rho_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])
                 - alpha_l[i] * rho_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz
@@ -1158,21 +1159,21 @@ int main() {
             (alpha_m[i] * T_m[i] * cp_m_p) / dt
             + (alpha_m[i] * cp_m_p * T_m[i] * v_m[i] * H(v_m[i])) / dz
             - (alpha_m[i] * cp_m_p * T_m[i] * v_m[i] * (1 - H(v_m[i - 1]))) / dz
-            + p_m[i] / dt
             - C45 - h_xv_v * C39);
 
         add(D[i], 2, 2,
             (T_m[i] * rho_m[i] * cp_m_p) / dt
             + (rho_m[i] * cp_m_p * T_m[i] * v_m[i] * H(v_m[i])) / dz
             - (rho_m[i] * cp_m_p * T_m[i] * v_m[i] * (1 - H(v_m[i - 1]))) / dz
-            + p_m[i] * (v_m[i] * H(v_m[i]) + v_m[i - 1] * H(v_m[i - 1])) / dz);
+            + p_m[i] * (v_m[i] * H(v_m[i]) + v_m[i - 1] * H(v_m[i - 1])) / dz)
+            + p_m[i] / dt;
 
         add(D[i], 2, 6,
-            (T_m[i] * cp_m_p* alpha_m[i] * rho_m[i]) / dt
             + (alpha_m[i] * rho_m[i] * cp_m_p * T_m[i] * H(v_m[i]) + alpha_m[i + 1] * rho_m[i + 1] * cp_m_r * T_m[i + 1] * (1 - H(v_m[i]))) / dz
             + p_m[i] * (alpha_m[i] * H(v_m[i]) + alpha_m[i + 1] * (1 - H(v_m[i]))) / dz);
 
         add(D[i], 2, 8,
+            + (alpha_m[i] * rho_m[i] * cp_m_p) / dt
             + (alpha_m[i] * rho_m[i] * cp_m_p * v_m[i] * H(v_m[i])) / dz
             - (alpha_m[i] * rho_m[i] * cp_m_p * v_m[i] * (1 - H(v_m[i - 1]))) / dz
             + (alpha_m[i] * k_m_p * H(v_m[i]) + alpha_m[i + 1] * k_m_r * (1 - H(v_m[i]))) / (dz * dz)
@@ -1180,9 +1181,10 @@ int main() {
             - C44 - h_xv_v * C38);
 
         add(D[i], 2, 9, - C42 - h_vx_x * C36);
-        add(D[i], 2, 10, -C43 - h_xv_v * C37);
+        add(D[i], 2, 10, - C43 - h_xv_v * C37);
 
-        Q_i[2] = 3 * (alpha_m[i] * T_m[i] * rho_m[i]) / dt 
+        Q_i[2] = 
+            + 3 * (alpha_m[i] * T_m[i] * cp_m_p * rho_m[i]) / dt 
             + 3 * ( 
                 + alpha_m[i] * rho_m[i] * cp_m_p * T_m[i] * v_m[i] * H(v_m[i]) 
                 + alpha_m[i + 1] * rho_m[i + 1] * cp_m_r * T_m[i + 1] * v_m[i + 1] * (1 - H(v_m[i]))
@@ -1194,31 +1196,30 @@ int main() {
                 + alpha_m[i + 1] * v_m[i] * (1 - H(v_m[i]))
                 - alpha_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])
                 - alpha_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))
-                    ) / dz
+                ) / dz
             + p_m[i] * alpha_m[i] / dt
             + C46 + h_xv_v * C40;
 
         add(L[i], 2, 0,
-            -(alpha_m[i - 1] * cp_m_l * T_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz);
+            - (alpha_m[i - 1] * cp_m_l * T_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz);
 
         add(L[i], 2, 2,
-            (rho_m[i - 1] * cp_m_l * T_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz
+            + (rho_m[i - 1] * cp_m_l * T_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz
             + p_m[i] * (v_m[i - 1] * H(v_m[i - 1])) / dz);
 
         add(L[i], 2, 6,
-            -(
+            - (
                 + alpha_m[i - 1] * rho_m[i - 1] * cp_m_l * T_m[i - 1] * H(v_m[i - 1]) 
                 + alpha_m[i] * rho_m[i] * cp_m_l * T_m[i] * (1 - H(v_m[i - 1]))
                 ) / dz
-            - p_m[i] * (
+            + p_m[i] * (
                 + alpha_m[i - 1] * H(v_m[i - 1]) 
                 + alpha_m[i] * (1 - H(v_m[i - 1]))
                 ) / dz);
 
         add(L[i], 2, 8,
-            -(alpha_m[i - 1] * rho_m[i - 1] * cp_m_l * v_m[i - 1] * H(v_m[i - 1])) / dz
+            - (alpha_m[i - 1] * rho_m[i - 1] * cp_m_l * v_m[i - 1] * H(v_m[i - 1])) / dz
             - (alpha_m[i - 1] * k_m_l * H(v_m[i - 1]) + alpha_m[i] * k_m_p * (1 - H(v_m[i - 1]))) / (dz * dz));
-
 
         add(R[i], 2, 0,
             (alpha_m[i + 1] * cp_m_r * T_m[i + 1] * v_m[i] * (1 - H(v_m[i]))) / dz);
@@ -1247,19 +1248,18 @@ int main() {
             eps_v * 
                 (alpha_l[i] * T_l[i] * cp_l_p) / dt
                 + (alpha_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])) / dz
-                - (alpha_l[i] * cp_l_p * T_l[i] * v_l[i] * (1 - H(v_l[i - 1]))) / dz
-                + p_l[i] / dt);
+                - (alpha_l[i] * cp_l_p * T_l[i] * v_l[i] * (1 - H(v_l[i - 1]))) / dz);
 
         add(D[i], 3, 3,
             eps_v * (
                 T_l[i] * rho_l[i] * cp_l_p) / dt
                 + (rho_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])) / dz
                 - (rho_l[i] * cp_l_p * T_l[i] * v_l[i] * (1 - H(v_l[i - 1]))) / dz
-                + p_l[i] * (v_l[i] * H(v_l[i]) + v_l[i - 1] * H(v_l[i - 1])) / dz);
+                + p_l[i] * (v_l[i] * H(v_l[i]) + v_l[i - 1] * H(v_l[i - 1])) / dz)
+            + eps_v * p_l[i] / dt;
 
         add(D[i], 3, 7, 
-            eps_v* (
-                T_l[i] * cp_l_p * alpha_l[i] * rho_l[i]) / dt
+            eps_v * (
                 + (alpha_l[i] * rho_l[i] * cp_l_p * T_l[i] * H(v_l[i]) + alpha_l[i + 1] * rho_l[i + 1] * cp_l_r * T_l[i + 1] * (1 - H(v_l[i]))) / dz
                 + p_l[i] * (alpha_l[i] * H(v_l[i]) + alpha_l[i + 1] * (1 - H(v_l[i]))) / dz);
 
@@ -1267,38 +1267,39 @@ int main() {
             -C56 - h_vx_x * C38 - C50);
 
         add(D[i], 3, 9,
-            eps_v * (
+            eps_v * (alpha_m[i] * rho_m[i] * cp_m_p) / dt
+            + eps_v * (
                 + alpha_l[i] * rho_l[i] * cp_l_p * v_l[i] * H(v_l[i])) / dz
                 - (alpha_l[i] * rho_l[i] * cp_l_p * v_l[i] * (1 - H(v_l[i - 1]))) / dz
                 + (alpha_l[i] * k_l_p * H(v_l[i]) + alpha_l[i + 1] * k_l_r * (1 - H(v_l[i]))) / (dz * dz)
                 + (alpha_l[i - 1] * k_l_l * H(v_l[i - 1]) + alpha_l[i] * k_l_p * (1 - H(v_l[i - 1]))) / (dz * dz)
-                - C44 - h_xv_v * C38
+             - C44 - h_xv_v * C38
             - C54 - C48 - h_vx_x * C36);
 
         add(D[i], 3, 10, 
             -C55 - h_vx_x * C37 - C49);
 
-        Q[i][2] = 
+        Q[i][3] = 
             eps_v * (
-                + 3 * (alpha_l[i] * T_l[i] * rho_l[i]) / dt
+                + 3 * (alpha_l[i] * T_l[i] * cp_l_p * rho_l[i]) / dt
                 + 3 * (
                     +alpha_l[i] * rho_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])
                     + alpha_l[i + 1] * rho_l[i + 1] * cp_l_r * T_l[i + 1] * v_l[i + 1] * (1 - H(v_l[i]))
                     - alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])
                     - alpha_l[i] * rho_l[i] * cp_l_p * T_l[i] * v_l[i] * (1 - H(v_l[i - 1]))
-                    ) / dz
-                + p_l[i] * (
+                    )) / dz
+            + eps_v * p_l[i] * (
                     +alpha_l[i] * v_l[i] * H(v_l[i])
                     + alpha_l[i + 1] * v_l[i] * (1 - H(v_l[i]))
                     - alpha_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])
                     - alpha_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))
                     ) / dz
-                + p_l[i] * alpha_l[i] / dt)
+            + eps_v * p_l[i] * alpha_l[i] / dt
             + C52 + C58 + h_vx_x * C40;
 
         add(L[i], 3, 1,
             eps_v * (
-            -(alpha_l[i - 1] * cp_l_l * T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz));
+                -(alpha_l[i - 1] * cp_l_l * T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz));
 
         add(L[i], 3, 3,
             eps_v * (
@@ -1310,11 +1311,11 @@ int main() {
                 -(
                     +alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * T_l[i - 1] * H(v_l[i - 1])
                     + alpha_l[i] * rho_l[i] * cp_l_l * T_l[i] * (1 - H(v_l[i - 1]))
-                ) / dz
-            - p_l[i] * (
+                ) / dz)
+            + eps_v * p_l[i] * (
                 +alpha_l[i - 1] * H(v_l[i - 1])
                 + alpha_l[i] * (1 - H(v_l[i - 1]))
-                ) / dz));
+                ) / dz);
 
         add(L[i], 3, 9,
             eps_v * (
@@ -1323,7 +1324,7 @@ int main() {
 
         add(R[i], 3, 1,
             eps_v * (
-            (alpha_l[i + 1] * cp_l_r* T_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz));
+            (alpha_l[i + 1] * cp_l_r * T_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz));
 
         add(R[i], 3, 3,
             eps_v * (
@@ -1359,7 +1360,7 @@ int main() {
         add(D[i], 4, 9, - C54 * C64 / C53);
 
         add(D[i], 4, 10,
-            (rho_w_p* cp_w_p) / dt
+            + (rho_w_p * cp_w_p) / dt
             - (C55 / C53) * C64
             + (k_w_lf + k_w_rf) / (dz * dz));
 
@@ -1377,21 +1378,21 @@ int main() {
         // Momentum mixture equation
 
         add(D[i], 5, 0,
-            +(alpha_m[i] * v_m[i]) / dt
+            + (alpha_m[i] * v_m[i]) / dt
             + (alpha_m[i] * v_m[i] * v_m[i] * H(v_m[i])) / dz
             - (alpha_m[i] * v_m[i - 1] * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz);
 
         add(D[i], 5, 2,
-            +(v_m[i] * rho_m[i]) / dt
+            + (v_m[i] * rho_m[i]) / dt
             + (rho_m[i] * v_m[i] * v_m[i] * H(v_m[i])) / dz
             - (rho_m[i] * v_m[i - 1] * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz);
 
         add(D[i], 5, 4,
-            -(alpha_m[i] * H(v_m[i])) / dz
+            - (alpha_m[i] * H(v_m[i])) / dz
             - (alpha_m[i] * (1 - H(v_m[i]))) / dz);
 
         add(D[i], 5, 6,
-            +(alpha_m[i] * rho_m[i]) / dt
+            + (alpha_m[i] * rho_m[i]) / dt
             + 2 * (rho_m[i] * alpha_m[i] * v_m[i] * H(v_m[i])) / dz
             + 2 * (rho_m[i + 1] * alpha_m[i + 1] * v_m[i + 1] * (1 - H(v_m[i]))) / dz
             + (fm * rho_m[i] * std::abs(v_m[i]) * H(v_m[i])) / (4 * r_v)
@@ -1405,13 +1406,13 @@ int main() {
             + 3 * (rho_m[i] * alpha_m[i] * v_m[i - 1] * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz;
 
         add(L[i], 5, 0,
-            -(alpha_m[i - 1] * v_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz);
+            - (alpha_m[i - 1] * v_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz);
 
         add(L[i], 5, 2,
-            -(rho_m[i - 1] * v_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz);
+            - (rho_m[i - 1] * v_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz);
 
         add(L[i], 5, 6,
-            -2 * (rho_m[i - 1] * alpha_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz
+            - 2 * (rho_m[i - 1] * alpha_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz
             - 2 * (rho_m[i] * alpha_m[i] * v_m[i] * (1 - H(v_m[i - 1]))) / dz);
 
         add(R[i], 5, 0,
