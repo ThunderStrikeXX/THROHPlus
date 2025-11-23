@@ -885,7 +885,7 @@ int main() {
     std::vector<SparseBlock> L(N), D(N), R(N);
     std::vector<VecBlock> Q(N), X;
 
-    for(int i = 1; i <= N - 2; ++i){
+    for(int i = 1; i < N - 1; ++i){
 
         const double k_w = steel::k(T_w_bulk[i]);                           ///< Wall thermal conductivity [W/(m K)]
         const double k_x = liquid_sodium::k(T_x_bulk[i]);                   ///< Liquid thermal conductivity [W/(m K)]
