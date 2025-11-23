@@ -1093,18 +1093,18 @@ int main() {
         add(D[i], 1, 0, +C39);
 
         add(D[i], 1, 1,
-            alpha_l[i] / dt
-            + (alpha_l[i] * v_l[i] * H(v_l[i])
-            - alpha_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
+            eps_v * alpha_l[i] / dt
+            + eps_v * (alpha_l[i] * v_l[i] * H(v_l[i])
+            - eps_v * alpha_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
 
         add(D[i], 1, 3,
-            rho_l[i] / dt
-            + (rho_l[i] * v_l[i] * H(v_l[i])
-            - rho_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
+            eps_v * rho_l[i] / dt
+            + eps_v * (rho_l[i] * v_l[i] * H(v_l[i])
+            - eps_v * rho_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
 
         add(D[i], 1, 7,
-            (alpha_l[i] * rho_l[i] * H(v_l[i])
-            + alpha_l[i + 1] * rho_l[i + 1] * (1 - H(v_l[i]))) / dz);
+            eps_v * (alpha_l[i] * rho_l[i] * H(v_l[i])
+            + eps_v * alpha_l[i + 1] * rho_l[i + 1] * (1 - H(v_l[i]))) / dz);
 
         add(D[i], 1, 8, +C38);
         add(D[i], 1, 9, +C36);
@@ -1112,27 +1112,27 @@ int main() {
 
 
         Q[i][1] = -C40
-            + 2 * (+alpha_l[i] * rho_l[i] * v_l[i] * H(v_l[i])
+            + 2 * eps_v * (+alpha_l[i] * rho_l[i] * v_l[i] * H(v_l[i])
                 + alpha_l[i + 1] * rho_l[i + 1] * v_l[i] * (1 - H(v_l[i]))
                 - alpha_l[i - 1] * rho_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])
                 - alpha_l[i] * rho_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz
-            + 2 * (rho_l[i] * alpha_l[i]) / dt;
+            + 2 * eps_v * (rho_l[i] * alpha_l[i]) / dt;
 
         add(L[i], 1, 3,
-            -(rho_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz);
+            - eps_v * (rho_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz);
 
         add(L[i], 1, 5,
-            -(alpha_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz);
+            - eps_v * (alpha_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz);
 
         add(L[i], 1, 7,
-            -(alpha_l[i - 1] * rho_l[i - 1] * H(v_l[i - 1])
+            - eps_v * (alpha_l[i - 1] * rho_l[i - 1] * H(v_l[i - 1])
             + alpha_l[i] * rho_l[i] * (1 - H(v_l[i - 1]))) / dz);
 
         add(R[i], 1, 1,
-            (alpha_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz);
+            + eps_v * (alpha_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz);
 
         add(R[i], 1, 3,
-            (rho_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz);
+            + eps_v * (rho_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz);
 
         // Mixture heat equation
 
