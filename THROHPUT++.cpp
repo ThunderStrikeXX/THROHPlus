@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <stdexcept>
+#include <cassert>
 
 bool warnings = false;
 
@@ -664,6 +665,7 @@ void solve_block_tridiag(
         // D[i] = D[i] - L[i] * Xtemp
         DenseBlock L_X;
         matmul(Ld[i], Xtemp, L_X);
+
         subtract_inplace(Dd[i], L_X);
 
         // Solve D[im1] * y = Qm[im1]
@@ -729,7 +731,6 @@ inline int H(double x) {
     return x > 0.0 ? 1 : 0;
 }
 
-
 int main() {
 
     #pragma region constants_and_variables
@@ -757,7 +758,7 @@ int main() {
     double const eps_v = 1.0;
 
     // Geometric parameters
-    const int N = 200;                                                         ///< Number of axial nodes [-]
+    const int N = 10;                                                         ///< Number of axial nodes [-]
     const double l = 0.982; 			                                        ///< Length of the heat pipe [m]
     const double dz = l / N;                                                    ///< Axial discretization step [m]
     const double evaporator_length = 0.502;                                     ///< Evaporator length [m]
@@ -779,7 +780,7 @@ int main() {
     const double A_v_cross = M_PI * r_v * r_v;                                      ///< Vapor cross-sectional area [m^2]
 
     // Time-stepping parameters
-    double dt = 1e-7;                               ///< Initial time step [s] (then it is updated according to the limits)
+    double dt = 1e-3;                               ///< Initial time step [s] (then it is updated according to the limits)
     const int tot_iter = 100000;                          ///< Number of timesteps
     const double time_total = tot_iter * dt;          ///< Total simulation time [s]
 
@@ -862,7 +863,7 @@ int main() {
     std::vector<double> T_w(N, 800);
 
     std::vector<double> Gamma_xv(N, 0.0);
-    std::vector<double> T_sur(N, 0.0);
+    std::vector<double> T_sur(N, 800.0);
 
     std::vector<SparseBlock> L(N), D(N), R(N);
     std::vector<VecBlock> Q(N), X(N);
@@ -872,9 +873,9 @@ int main() {
     const double Evi1 = 2.0 / 3.0 * (r_i + r_v - 1 / (1 / r_i + 1 / r_v));
     const double Evi2 = 0.5 * (r_i * r_i + r_v * r_v);
 
-    for(int n = 0; n < tot_iter; ++n){
+    for(int n = 0; n < tot_iter; ++n) {
 
-        for(int i = 1; i < N - 1; ++i){
+        for(int i = 1; i < N - 1; ++i) {
 
             const double k_w = steel::k(T_w[i]);                           ///< Wall thermal conductivity [W/(m K)]
             const double k_x = liquid_sodium::k(T_l[i]);                   ///< Liquid thermal conductivity [W/(m K)]
@@ -1011,6 +1012,8 @@ int main() {
 
             T_sur[i] = C66 * T_l[i] + C67 * T_w[i] + C68 * T_m[i] + C69 * rho_m[i] + C70;
 
+            phi_x_v[i] = beta * (Psat - p_m[i]);
+
             // DPcap evaluation
 
             const double alpha_m0 = r_v * r_v / (r_i * r_i);
@@ -1087,18 +1090,21 @@ int main() {
             add(D[i], 1, 0, +C39);
 
             add(D[i], 1, 1,
-                eps_v * alpha_l[i] / dt
-                + eps_v * (alpha_l[i] * v_l[i] * H(v_l[i])
-                - eps_v * alpha_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
+                eps_v * (
+                    + alpha_l[i] / dt
+                    + alpha_l[i] * v_l[i] * H(v_l[i])
+                    - alpha_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
 
             add(D[i], 1, 3,
-                eps_v * rho_l[i] / dt
-                + eps_v * (rho_l[i] * v_l[i] * H(v_l[i])
-                - eps_v * rho_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
+                eps_v * (
+                    + rho_l[i] / dt
+                    + rho_l[i] * v_l[i] * H(v_l[i])
+                    - rho_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
 
             add(D[i], 1, 7,
-                eps_v * (alpha_l[i] * rho_l[i] * H(v_l[i])
-                + eps_v * alpha_l[i + 1] * rho_l[i + 1] * (1 - H(v_l[i]))) / dz);
+                eps_v * (
+                    + alpha_l[i] * rho_l[i] * H(v_l[i])
+                    + alpha_l[i + 1] * rho_l[i + 1] * (1 - H(v_l[i]))) / dz);
 
             add(D[i], 1, 8, +C38);
             add(D[i], 1, 9, +C36);
@@ -1120,8 +1126,9 @@ int main() {
                 - eps_v * (alpha_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz);
 
             add(L[i], 1, 7,
-                - eps_v * (alpha_l[i - 1] * rho_l[i - 1] * H(v_l[i - 1])
-                + alpha_l[i] * rho_l[i] * (1 - H(v_l[i - 1]))) / dz);
+                - eps_v * (
+                    + alpha_l[i - 1] * rho_l[i - 1] * H(v_l[i - 1])
+                    + alpha_l[i] * rho_l[i] * (1 - H(v_l[i - 1]))) / dz);
 
             add(R[i], 1, 1,
                 + eps_v * (alpha_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz);
@@ -1250,12 +1257,12 @@ int main() {
                 -C56 - h_vx_x * C38 - C50);
 
             add(D[i], 3, 9,
-                eps_v * (alpha_m[i] * rho_m[i] * cp_m_p) / dt
-                + eps_v * (
-                    + alpha_l[i] * rho_l[i] * cp_l_p * v_l[i] * H(v_l[i])) / dz
-                    - (alpha_l[i] * rho_l[i] * cp_l_p * v_l[i] * (1 - H(v_l[i - 1]))) / dz
-                    + (alpha_l[i] * k_l_p * H(v_l[i]) + alpha_l[i + 1] * k_l_r * (1 - H(v_l[i]))) / (dz * dz)
-                    + (alpha_l[i - 1] * k_l_l * H(v_l[i - 1]) + alpha_l[i] * k_l_p * (1 - H(v_l[i - 1]))) / (dz * dz)
+                eps_v * (
+                    + alpha_m[i] * rho_m[i] * cp_m_p / dt
+                    + alpha_l[i] * rho_l[i] * cp_l_p * v_l[i] * H(v_l[i]) / dz
+                    - alpha_l[i] * rho_l[i] * cp_l_p * v_l[i] * (1 - H(v_l[i - 1])) / dz
+                    + alpha_l[i] * k_l_p * H(v_l[i]) + alpha_l[i + 1] * k_l_r * (1 - H(v_l[i])) / (dz * dz)
+                    + alpha_l[i - 1] * k_l_l * H(v_l[i - 1]) + alpha_l[i] * k_l_p * (1 - H(v_l[i - 1])) / (dz * dz))
                  - C44 - h_xv_v * C38
                 - C54 - C48 - h_vx_x * C36);
 
@@ -1266,11 +1273,11 @@ int main() {
                 eps_v * (
                     + 3 * (alpha_l[i] * T_l[i] * cp_l_p * rho_l[i]) / dt
                     + 3 * (
-                        +alpha_l[i] * rho_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])
+                        + alpha_l[i] * rho_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])
                         + alpha_l[i + 1] * rho_l[i + 1] * cp_l_r * T_l[i + 1] * v_l[i + 1] * (1 - H(v_l[i]))
                         - alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])
                         - alpha_l[i] * rho_l[i] * cp_l_p * T_l[i] * v_l[i] * (1 - H(v_l[i - 1]))
-                        )) / dz
+                        ) / dz)
                 + eps_v * p_l[i] * (
                         +alpha_l[i] * v_l[i] * H(v_l[i])
                         + alpha_l[i + 1] * v_l[i] * (1 - H(v_l[i]))
@@ -1286,13 +1293,13 @@ int main() {
 
             add(L[i], 3, 3,
                 eps_v * (
-                    (rho_l[i - 1] * cp_l_l* T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz
-                    + p_l[i] * (v_l[i - 1] * H(v_l[i - 1])) / dz));
+                    + rho_l[i - 1] * cp_l_l* T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1]) / dz
+                    + p_l[i] * v_l[i - 1] * H(v_l[i - 1]) / dz));
 
             add(L[i], 3, 7,
                 eps_v * (
                     -(
-                        +alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * T_l[i - 1] * H(v_l[i - 1])
+                        + alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * T_l[i - 1] * H(v_l[i - 1])
                         + alpha_l[i] * rho_l[i] * cp_l_l * T_l[i] * (1 - H(v_l[i - 1]))
                     ) / dz)
                 + eps_v * p_l[i] * (
@@ -1302,22 +1309,22 @@ int main() {
 
             add(L[i], 3, 9,
                 eps_v * (
-                -(alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * v_l[i - 1] * H(v_l[i - 1])) / dz
+                -( alpha_l[i - 1] * rho_l[i - 1] * cp_l_l * v_l[i - 1] * H(v_l[i - 1])) / dz
                 - (alpha_l[i - 1] * k_l_l * H(v_l[i - 1]) + alpha_l[i] * k_l_p * (1 - H(v_l[i - 1]))) / (dz * dz)));
 
             add(R[i], 3, 1,
                 eps_v * (
-                (alpha_l[i + 1] * cp_l_r * T_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz));
+                    + alpha_l[i + 1] * cp_l_r * T_l[i + 1] * v_l[i] * (1 - H(v_l[i])) / dz));
 
             add(R[i], 3, 3,
                 eps_v * (
-                (rho_l[i + 1] * cp_l_r* T_l[i + 1] * v_l[i] * (1 - H(v_l[i]))) / dz
-                + p_l[i] * (v_l[i] * (1 - H(v_l[i]))) / dz));
+                    + rho_l[i + 1] * cp_l_r* T_l[i + 1] * v_l[i] * (1 - H(v_l[i])) / dz
+                    + p_l[i] * v_l[i] * (1 - H(v_l[i])) / dz));
 
             add(R[i], 3, 9,
                 eps_v * (
-                    (alpha_l[i + 1] * rho_l[i + 1] * cp_l_r* v_l[i] * (1 - H(v_l[i]))) / dz
-                    - (alpha_l[i] * k_l_p * H(v_l[i]) + alpha_l[i + 1] * k_l_r * (1 - H(v_l[i]))) / (dz * dz)));
+                    + alpha_l[i + 1] * rho_l[i + 1] * cp_l_r* v_l[i] * (1 - H(v_l[i])) / dz
+                    - alpha_l[i] * k_l_p * H(v_l[i]) + alpha_l[i + 1] * k_l_r * (1 - H(v_l[i])) / (dz * dz)));
 
             // Heat wall equation
 
@@ -1325,13 +1332,13 @@ int main() {
             const double rho_w_l = steel::rho(T_w[i - 1]);
             const double rho_w_r = steel::rho(T_w[i + 1]);
 
-            const double cp_w_p = steel::rho(T_w[i]);
-            const double cp_w_l = steel::rho(T_w[i - 1]);
-            const double cp_w_r = steel::rho(T_w[i + 1]);
+            const double cp_w_p = steel::cp(T_w[i]);
+            const double cp_w_l = steel::cp(T_w[i - 1]);
+            const double cp_w_r = steel::cp(T_w[i + 1]);
 
-            const double k_w_p = steel::rho(T_w[i]);
-            const double k_w_l = steel::rho(T_w[i - 1]);
-            const double k_w_r = steel::rho(T_w[i + 1]);
+            const double k_w_p = steel::k(T_w[i]);
+            const double k_w_l = steel::k(T_w[i - 1]);
+            const double k_w_r = steel::k(T_w[i + 1]);
 
             const double k_w_lf = 0.5 * (k_w_l + k_w_p);
             const double k_w_rf = 0.5 * (k_w_r + k_w_p);
@@ -1376,7 +1383,7 @@ int main() {
 
             add(D[i], 5, 4,
                 - (alpha_m[i] * H(v_m[i])) / dz
-                - (alpha_m[i] * (1 - H(v_m[i]))) / dz);
+                - (alpha_m[i + 1] * (1 - H(v_m[i]))) / dz);
 
             add(D[i], 5, 6,
                 + (alpha_m[i] * rho_m[i]) / dt
@@ -1410,26 +1417,29 @@ int main() {
 
             add(R[i], 5, 4,
                 + (alpha_m[i] * H(v_m[i])) / dz
-                + (alpha_m[i] * (1 - H(v_m[i]))) / dz);
+                + (alpha_m[i + 1] * (1 - H(v_m[i]))) / dz);
 
             // Momentum liquid equation
 
             const double Fl = 8 * mu_l / ((r_i - r_v) * (r_i - r_v));
 
             add(D[i], 6, 1,
-                + eps_v * (alpha_l[i] * v_l[i]) / dt
-                + eps_v * (alpha_l[i] * v_l[i] * v_l[i] * H(v_l[i])) / dz
-                - eps_v * (alpha_l[i] * v_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz);
+                + eps_v * (
+                    + alpha_l[i] * v_l[i] / dt
+                    + alpha_l[i] * v_l[i] * v_l[i] * H(v_l[i]) / dz
+                    - alpha_l[i] * v_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1])) / dz));
 
             add(D[i], 6, 3,
-                + eps_v * (v_l[i] * rho_l[i]) / dt
-                + eps_v * (rho_l[i] * v_l[i] * v_l[i] * H(v_l[i])) / dz
-                - eps_v * (rho_l[i] * v_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz
+                + eps_v * (
+                    + v_l[i] * rho_l[i] / dt
+                    + rho_l[i] * v_l[i] * v_l[i] * H(v_l[i]) / dz
+                    - rho_l[i] * v_l[i - 1] * v_l[i - 1] * (1 - H(v_l[i - 1])) / dz)
                 - DPcap / dz);
 
-            add(D[i], 5, 5,
-                - eps_v * (alpha_l[i] * H(v_l[i])) / dz
-                - eps_v * (alpha_l[i] * (1 - H(v_l[i]))) / dz);
+            add(D[i], 6, 5,
+                - eps_v * (
+                    + alpha_l[i] * H(v_l[i]) / dz
+                    - alpha_l[i + 1] * (1 - H(v_l[i])) / dz));
 
             add(D[i], 6, 7,
                 + eps_v * (alpha_l[i] * rho_l[i]) / dt
@@ -1464,7 +1474,7 @@ int main() {
 
             add(R[i], 6, 5,
                 + eps_v * (alpha_l[i] * H(v_l[i])) / dz
-                + eps_v * (alpha_l[i] * (1 - H(v_l[i]))) / dz);
+                + eps_v * (alpha_l[i + 1] * (1 - H(v_l[i]))) / dz);
 
             // State mixture equation
 
@@ -1505,6 +1515,10 @@ int main() {
             add(D[i], 10, 5, -1);
 
             Q[i][10] = DPcap;
+
+            DenseBlock D_dense = to_dense(D[i]);
+
+            printf("");
         }
 
         // First node boundary conditions
@@ -1534,16 +1548,16 @@ int main() {
         add(R[0], 10, 10, -1.0);
 
         Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
-        Q[0][0] = 0.0;
+        Q[0][1] = 0.0;
+        Q[0][2] = 0.0;
+        Q[0][3] = 0.0;
+        Q[0][4] = 0.0;
+        Q[0][5] = 0.0;
+        Q[0][6] = 0.0;
+        Q[0][7] = 0.0;
+        Q[0][8] = 0.0;
+        Q[0][9] = 0.0;
+        Q[0][10] = 0.0;
 
         // Last node boundary conditions
 
@@ -1584,6 +1598,21 @@ int main() {
         Q[N - 1][10] = 0.0;
 
         solve_block_tridiag(L, D, R, Q, X);
+
+        for (int i = 0; i < N; ++i) {
+
+            rho_m[i] = X[i][0];
+            rho_l[i] = X[i][1];
+            alpha_m[i] = X[i][2];
+            alpha_l[i] = X[i][3];
+            p_m[i] = X[i][4];
+            p_l[i] = X[i][5];
+            v_m[i] = X[i][6];
+            v_l[i] = X[i][7];
+            T_m[i] = X[i][8];
+            T_l[i] = X[i][9];
+            T_w[i] = X[i][10];
+        }
 
         if (n % 1000 == 0) {
             for (int i = 0; i < N; ++i) {
