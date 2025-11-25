@@ -780,7 +780,7 @@ int main() {
     const double A_v_cross = M_PI * r_v * r_v;                                      ///< Vapor cross-sectional area [m^2]
 
     // Time-stepping parameters
-    double dt = 1e-3;                               ///< Initial time step [s] (then it is updated according to the limits)
+    double dt = 1e-6;                               ///< Initial time step [s] (then it is updated according to the limits)
     const int tot_iter = 100000;                          ///< Number of timesteps
     const double time_total = tot_iter * dt;          ///< Total simulation time [s]
 
@@ -857,7 +857,7 @@ int main() {
     std::vector<double> p_m(N, 2650);
     std::vector<double> p_l(N, 2650);
     std::vector<double> v_m(N, 1.0);
-    std::vector<double> v_l(N, 0.01);
+    std::vector<double> v_l(N, -0.01);
     std::vector<double> T_m(N, 800);
     std::vector<double> T_l(N, 800);
     std::vector<double> T_w(N, 800);
@@ -1692,7 +1692,7 @@ int main() {
             alpha_m[i] = X[i][2];
             alpha_l[i] = X[i][3];
             p_m[i] = X[i][4];
-            p_l[i] = X[i][5];
+            p_l[i] = X[i][5] > 0 ? X[i][5] : 0.0;
             v_m[i] = X[i][6];
             v_l[i] = X[i][7];
             T_m[i] = X[i][8];
