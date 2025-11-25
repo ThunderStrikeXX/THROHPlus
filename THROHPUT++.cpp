@@ -795,7 +795,7 @@ int main() {
     const double time_total = tot_iter * dt;            ///< Total simulation time [s]
 
     // Wick permeability parameters
-    const double K = 1e-8;                             ///< Permeability [m^2]
+    const double K = 1e-8;                              ///< Permeability [m^2]
     const double CF = 1e4;                              ///< Forchheimer coefficient [1/m]
 
     // Mesh z positions
@@ -886,12 +886,12 @@ int main() {
 
         for(int i = 1; i < N - 1; ++i) {
 
-            const double k_w = steel::k(T_w[i]);                           ///< Wall thermal conductivity [W/(m K)]
-            const double k_x = liquid_sodium::k(T_l[i]);                   ///< Liquid thermal conductivity [W/(m K)]
+            const double k_w = steel::k(T_w[i]);                                ///< Wall thermal conductivity [W/(m K)]
+            const double k_x = liquid_sodium::k(T_l[i]);                        ///< Liquid thermal conductivity [W/(m K)]
             const double k_m = vapor_sodium::k(T_m[i], p_m[i]);                 ///< Vapor thermal conductivity [W/(m K)]
             const double cp_m = vapor_sodium::cp(T_m[i]);                       ///< Vapor specific heat [J/(kg K)]
-            const double mu_v = vapor_sodium::mu(T_m[i]);                  ///< Vapor dynamic viscosity [Pa*s]
-            const double mu_l = liquid_sodium::mu(T_l[i]);                 ///< Liquid dynamic viscosity
+            const double mu_v = vapor_sodium::mu(T_m[i]);                       ///< Vapor dynamic viscosity [Pa*s]
+            const double mu_l = liquid_sodium::mu(T_l[i]);                      ///< Liquid dynamic viscosity
             const double Dh_v = 2.0 * r_v;                                      ///< Hydraulic diameter of the vapor core [m]
             const double Re_v = rho_m[i] * std::fabs(v_m[i]) * Dh_v / mu_v;     ///< Reynolds number [-]
             const double Pr_v = cp_m * mu_v / k_m;                              ///< Prandtl number [-]
@@ -1021,7 +1021,8 @@ int main() {
 
             T_sur[i] = C66 * T_l[i] + C67 * T_w[i] + C68 * T_m[i] + C69 * rho_m[i] + C70;
 
-            phi_x_v[i] = beta * (Psat - p_m[i]);
+            phi_x_v[i] = beta * (sigma_e * Psat - sigma_c * Omega * p_m[i]);
+            Gamma_xv[i] = 2 * r_v * eps_s / (r_i * r_i) * phi_x_v[i];
 
             // DPcap evaluation
 
@@ -1709,7 +1710,7 @@ int main() {
             T_w[i] = X[i][10];
         }
 
-        if (n % 1000 == 0) {
+        if (n % 10 == 0) {
             for (int i = 0; i < N; ++i) {
 
                 v_velocity_output << X[i][6] << ", ";
