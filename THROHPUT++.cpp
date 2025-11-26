@@ -790,7 +790,7 @@ int main() {
     const double A_v_cross = M_PI * r_v * r_v;                                  ///< Vapor cross-sectional area [m^2]
 
     // Time-stepping parameters
-    double dt = 1e-6;                                   ///< Initial time step [s] (then it is updated according to the limits)
+    double dt = 1e-7;                                   ///< Initial time step [s] (then it is updated according to the limits)
     const int tot_iter = 100000;                        ///< Number of timesteps
     const double time_total = tot_iter * dt;            ///< Total simulation time [s]
 
@@ -881,24 +881,26 @@ int main() {
     const double Eio2 = 0.5 * (r_o * r_o + r_i * r_i);
     const double Evi1 = 2.0 / 3.0 * (r_i + r_v - 1 / (1 / r_i + 1 / r_v));
     const double Evi2 = 0.5 * (r_i * r_i + r_v * r_v);
-
+    
+	// Time-stepping loop
     for(int n = 0; n < tot_iter; ++n) {
 
+		// Space discretization loop
         for(int i = 1; i < N - 1; ++i) {
 
-            const double k_w = steel::k(T_w[i]);                                ///< Wall thermal conductivity [W/(m K)]
-            const double k_x = liquid_sodium::k(T_l[i]);                        ///< Liquid thermal conductivity [W/(m K)]
-            const double k_m = vapor_sodium::k(T_m[i], p_m[i]);                 ///< Vapor thermal conductivity [W/(m K)]
-            const double cp_m = vapor_sodium::cp(T_m[i]);                       ///< Vapor specific heat [J/(kg K)]
-            const double mu_v = vapor_sodium::mu(T_m[i]);                       ///< Vapor dynamic viscosity [Pa*s]
-            const double mu_l = liquid_sodium::mu(T_l[i]);                      ///< Liquid dynamic viscosity
-            const double Dh_v = 2.0 * r_v;                                      ///< Hydraulic diameter of the vapor core [m]
-            const double Re_v = rho_m[i] * std::fabs(v_m[i]) * Dh_v / mu_v;     ///< Reynolds number [-]
-            const double Pr_v = cp_m * mu_v / k_m;                              ///< Prandtl number [-]
-            const double H_xm = vapor_sodium::h_conv(Re_v, Pr_v, k_m, Dh_v);    ///< Convective heat transfer coefficient at the vapor-wick interface [W/m^2/K]
-            const double Psat = vapor_sodium::P_sat(T_sur[i]);                  ///< Saturation pressure [Pa]         
-            const double dPsat_dT = 
-                Psat * std::log(10.0) * (7740.0 / (T_sur[i] * T_sur[i]));       ///< Derivative of the saturation pressure wrt T [Pa/K]   
+            // Physical properties
+            const double k_w = steel::k(T_w[i]);                                                ///< Wall thermal conductivity [W/(m K)]
+            const double k_x = liquid_sodium::k(T_l[i]);                                        ///< Liquid thermal conductivity [W/(m K)]
+            const double k_m = vapor_sodium::k(T_m[i], p_m[i]);                                 ///< Vapor thermal conductivity [W/(m K)]
+            const double cp_m = vapor_sodium::cp(T_m[i]);                                       ///< Vapor specific heat [J/(kg K)]
+            const double mu_v = vapor_sodium::mu(T_m[i]);                                       ///< Vapor dynamic viscosity [Pa*s]
+            const double mu_l = liquid_sodium::mu(T_l[i]);                                      ///< Liquid dynamic viscosity
+            const double Dh_v = 2.0 * r_v;                                                      ///< Hydraulic diameter of the vapor core [m]
+            const double Re_v = rho_m[i] * std::fabs(v_m[i]) * Dh_v / mu_v;                     ///< Reynolds number [-]
+            const double Pr_v = cp_m * mu_v / k_m;                                              ///< Prandtl number [-]
+            const double H_xm = vapor_sodium::h_conv(Re_v, Pr_v, k_m, Dh_v);                    ///< Convective heat transfer coefficient at the vapor-wick interface [W/m^2/K]
+            const double Psat = vapor_sodium::P_sat(T_sur[i]);                                  ///< Saturation pressure [Pa]         
+            const double dPsat_dT = Psat * std::log(10.0) * (7740.0 / (T_sur[i] * T_sur[i]));   ///< Derivative of the saturation pressure wrt T [Pa/K]   
         
             double h_xv_v;      ///< Specific enthalpy [J/kg] of vapor upon phase change between wick and vapor
             double h_vx_x;      ///< Specific enthalpy [J/kg] of wick upon phase change between vapor and wick
@@ -932,14 +934,8 @@ int main() {
             const double cGamma = -fac * sigma_c * Omega;                                       ///< c coefficient [s/m2]
 
             const double Ex3 = H_xm + (h_vx_x * r_i * r_i) / (2.0 * r_v) * bGamma;
-            const double Ex4 =
-                -k_x +
-                H_xm * r_v +
-                h_vx_x * r_i * r_i / 2.0 * bGamma;
-            const double Ex5 =
-                -2.0 * r_v * k_x +
-                H_xm * r_v * r_v +
-                h_vx_x * r_i * r_i / 2.0 * bGamma * r_v;
+            const double Ex4 = -k_x + H_xm * r_v + h_vx_x * r_i * r_i / 2.0 * bGamma;
+            const double Ex5 = -2.0 * r_v * k_x + H_xm * r_v * r_v + h_vx_x * r_i * r_i / 2.0 * bGamma * r_v;
             const double Ex6 = -H_xm;
             const double Ex7 = (h_vx_x * r_i * r_i) / (2.0 * r_v) * cGamma;
             const double Ex8 = (h_vx_x * r_i * r_i) / (2.0 * r_v) * aGamma;
@@ -947,77 +943,182 @@ int main() {
             const double alpha = 1.0 / (2 * r_o * (Eio1 - r_i) + r_i * r_i - Eio2);
             const double gamma = r_i * r_i + ((Ex5 - Evi2 * Ex3) * (Evi1 - r_i)) / (Ex4 - Evi1 * Ex3) - Evi2;
 
-            const double C1 = 2 * k_w * (r_o - r_i) * alpha;
-            const double C65 = -C1 * gamma + (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) * k_x - 2 * r_i * k_x;
-            const double C2 = (Evi1 - r_i) / (Ex4 - Evi1 * Ex3);
-            const double C3 = (C1 + C2 * Ex3) / C65;
-            const double C4 = -C1 / C65;
-            const double C5 = (-C2 * Ex6 - C2 * Ex7 * rho_m[i] * Rv) / C65;
-            const double C6 = (-C2 * Ex7 * Rv * T_m[i]) / C65;
-            const double C7 = (-q_pp + C1 * q_pp * (Eio1 - r_i) - C2 * Ex8 + 2 * C2 * Ex7 * rho_m[i] * T_m[i] * Rv) / C65;
-            const double C8 = alpha + C2 * Ex3 + alpha * gamma * C3;
-            const double C9 = -alpha + alpha * gamma * C4;
-            const double C10 = -C2 * Ex6 - C2 * Ex7 * Rv * rho_m[i] + alpha * gamma * C5;
-            const double C11 = -C2 * Ex7 * T_m[i] * Rv + alpha * gamma * C6;
-            const double C12 = alpha * q_pp / k_w * (Eio1 - r_i) - C2 * Ex8 + 2 * C2 * Ex7 * T_m[i] * Rv * rho_m[i] + alpha * gamma * C7;
-            const double C13 = -2 * r_o * C8;
-            const double C14 = -2 * r_o * C9;
-            const double C15 = -2 * r_o * C10;
-            const double C16 = -2 * r_o * C11;
-            const double C17 = -2 * r_o * C12 + q_pp / k_w;
-            const double C18 = 2 * r_o * Eio1 - Eio2;
-            const double C19 = C18 * C8;
-            const double C20 = C18 * C9 + 1;
-            const double C21 = C18 * C10;
-            const double C22 = C18 * C11;
-            const double C23 = C18 * C12 - Eio1 * q_pp / k_w;
-            const double C24 = 1.0 / (Ex4 - Evi1 * Ex3);
-            const double C25 = Ex5 - Evi2 * Ex3;
-            const double C26 = -C24 * Ex3 - C25 * C24 * C3;
-            const double C27 = -C25 * C24 * C4;
-            const double C28 = C24 * Ex6 + C24 * Ex7 * Rv * rho_m[i] - C25 * C24 * C5;
-            const double C29 = C24 * Ex7 * Rv * T_m[i] - C25 * C24 * C6;
-            const double C30 = C24 * Ex8 - 2 * C24 * Ex7 * Rv * T_m[i] * rho_m[i] - C25 * C24 * C7;
-            const double C31 = 1 - Evi1 * C26 - Evi2 * C3;
-            const double C32 = -Evi1 * C27 - Evi2 * C4;
-            const double C33 = -Evi1 * C28 - Evi2 * C5;
-            const double C34 = -Evi1 * C29 - Evi2 * C6;
-            const double C35 = -Evi1 * C30 - Evi2 * C7;
-            const double C66 = C31 + r_v * C26 + r_v * r_v * C3;
-            const double C67 = C32 + r_v * C27 + r_v * r_v * C4;
-            const double C68 = C33 + r_v * C28 + r_v * r_v * C5;
-            const double C69 = C34 + r_v * C29 + r_v * r_v * C6;
-            const double C70 = C35 + r_v * C30 + r_v * r_v * C7;
+            // Delta coefficients
+            const double C1 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex7;
+            const double C2 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex6;
+			const double C3 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex3 + 1;
+			const double C4 = - 1;
+			const double C5 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * (Ex8 - Ex7 * p_m[i]) + q_pp / k_w * (Eio1 - r_i);
 
-            const double C36 = bGamma * C31 + bGamma * r_v * C26 + bGamma * r_v * r_v * C3;
-            const double C37 = bGamma * C32 + bGamma * r_v * C27 + bGamma * r_v * r_v * C4;
-            const double C38 = bGamma * C33 + bGamma * r_v * C28 + bGamma * r_v * r_v * C5 + cGamma * Rv * rho_m[i];
-            const double C39 = bGamma * C34 + bGamma * r_v * C29 + bGamma * r_v * r_v * C6 + cGamma * Rv * T_m[i];
-            const double C40 = aGamma + bGamma * C35 + bGamma * r_v * C30 + bGamma * r_v * r_v * C7 - 2 * cGamma * Rv * T_m[i] * rho_m[i];
-            const double C41 = 2 * H_xm * r_v / (r_i * r_i);
-            const double C42 = C41 * C31 + C41 * C26 * r_v + C41 * C3 * r_v * r_v;
-            const double C43 = C41 * C32 + C41 * C27 * r_v + C41 * C4 * r_v * r_v;
-            const double C44 = C41 * C33 + C41 * C28 * r_v + C41 * C5 * r_v * r_v - C41;
-            const double C45 = C41 * C34 + C41 * C29 * r_v + C41 * C6 * r_v * r_v;
-            const double C46 = C41 * C35 + C41 * C30 * r_v + C41 * C7 * r_v * r_v;
-            const double C47 = -k_x * 2 * r_v / (r_i * r_i);
-            const double C48 = C47 * C26 + 2 * r_v * C47 * C3;
-            const double C49 = C47 * C27 + 2 * r_v * C47 * C4;
-            const double C50 = C47 * C28 + 2 * r_v * C47 * C5;
-            const double C51 = C47 * C29 + 2 * r_v * C47 * C6;
-            const double C52 = C47 * C30 + 2 * r_v * C47 * C7;
-            const double C53 = k_w * 2 / r_i;
-            const double C54 = C53 * C13 + 2 * r_i * C53 * C8;
-            const double C55 = C53 * C14 + 2 * r_i * C53 * C9;
-            const double C56 = C53 * C15 + 2 * r_i * C53 * C10;
-            const double C57 = C53 * C16 + 2 * r_i * C53 * C11;
-            const double C58 = C53 * C17 + 2 * r_i * C53 * C12;
-            const double C59 = 219.0;
-            const double C60 = 275.32;
-            const double C61 = 511.58;
-            const double C62 = -1.0 / Tc * (C60 + C61 / (2 * std::sqrt(1 - T_l[i] / Tc)));
-            const double C63 = C59 + C60 * (1.0 - T_l[i] / Tc) + C61 * std::sqrt(1.0 - T_l[i] / Tc) + T_l[i] / Tc * (C60 + C61 / (2 * std::sqrt(1.0 - T_l[i] / Tc)));
-            const double C64 = -k_w * 2 * r_i / (r_o * r_o - r_i * r_i);
+			// c_x coefficients
+			const double C6 = (2 * k_w * (r_o - r_i) * alpha * C1 + k_x * Ex7 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+			const double C7 = (2 * k_w * (r_o - r_i) * alpha * C2 + k_x * Ex6 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+			const double C8 = (2 * k_w * (r_o - r_i) * alpha * C3 - k_x * Ex3 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+			const double C9 = (2 * k_w * (r_o - r_i) * alpha * C4) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+			const double C10 = (- q_pp + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * Ex8 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_w * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+
+            // c_w coefficients
+			const double C11 = alpha * (C1 + gamma * C6);
+			const double C12 = alpha * (C2 + gamma * C7);
+			const double C13 = alpha * (C3 + gamma * C8);
+			const double C14 = alpha * (C4 + gamma * C9);
+			const double C15 = alpha * (C5 + gamma * C10);
+
+			// b_w coefficients
+			const double C16 = - 2 * r_o * C11;
+			const double C17 = -2 * r_o * C12;
+			const double C18 = -2 * r_o * C13;
+			const double C19 = -2 * r_o * C14;
+			const double C20 = -2 * r_o * C15 + q_pp / k_w;
+
+			// a_w coefficients
+			const double C21 = (2 * r_o * Eio1 - Eio2) * C11;
+			const double C22 = (2 * r_o * Eio1 - Eio2) * C12;
+			const double C23 = (2 * r_o * Eio1 - Eio2) * C13;
+			const double C24 = (2 * r_o * Eio1 - Eio2) * C14 + 1;
+            const double C25 = (2 * r_o * Eio1 - Eio2) * C15 - q_pp * Eio1 / k_w;
+
+			// b_x coefficients
+			const double C26 = (- (Ex5 - Evi2 * Ex3) * C6 + Ex7) / (Ex4 - Evi1 * Ex3);
+			const double C27 = (- (Ex5 - Evi2 * Ex3) * C7 + Ex6) / (Ex4 - Evi1 * Ex3);
+			const double C28 = (- (Ex5 - Evi2 * Ex3) * C8 - Ex3) / (Ex4 - Evi1 * Ex3);
+			const double C29 = (- (Ex5 - Evi2 * Ex3) * C9) / (Ex4 - Evi1 * Ex3);
+			const double C30 = (- (Ex5 - Evi2 * Ex3) * C10 + Ex8 - p_m[i] * Ex7) / (Ex4 - Evi1 * Ex3);
+
+			// a_x coefficients
+			const double C31 = - Evi1 * C26 - Evi2 * C6;
+			const double C32 = - Evi1 * C27 - Evi2 * C7;
+			const double C33 = - Evi1 * C28 - Evi2 * C8 + 1;
+			const double C34 = - Evi1 * C29 - Evi2 * C9;
+			const double C35 = - Evi1 * C30 - Evi2 * C10;
+
+            // T_sur coefficients
+			const double C36 = C31 + r_v * C26 + r_v * r_v * C6;
+			const double C37 = C32 + r_v * C27 + r_v * r_v * C7;
+			const double C38 = C33 + r_v * C28 + r_v * r_v * C8;
+			const double C39 = C34 + r_v * C29 + r_v * r_v * C9;
+			const double C40 = C35 + r_v * C30 + r_v * r_v * C10;
+
+            // Mass source coefficients
+			const double C41 = bGamma * C36 + cGamma;
+			const double C42 = bGamma * C37;
+			const double C43 = bGamma * C38;
+			const double C44 = bGamma * C39;
+			const double C45 = aGamma + bGamma * C40 - cGamma * p_m[i];
+
+            // Heat source from mixture to liquid due to heat flux coefficients
+			const double C46 = - 2 * k_x * r_v / (r_i * r_i) * (C26 + 2 * r_v * C6);
+			const double C47 = -2 * k_x * r_v / (r_i * r_i) * (C27 + 2 * r_v * C7);
+			const double C48 = -2 * k_x * r_v / (r_i * r_i) * (C28 + 2 * r_v * C8);
+			const double C49 = -2 * k_x * r_v / (r_i * r_i) * (C29 + 2 * r_v * C9);
+			const double C50 = -2 * k_x * r_v / (r_i * r_i) * (C30 + 2 * r_v * C10);
+
+			// Heat source from liquid to mixture due to heat flux coefficients
+			const double C51 = 2 * H_xm * r_v / (r_i * r_i) * (C31 + C26 * r_v + C6 * r_v * r_v);
+			const double C52 = 2 * H_xm * r_v / (r_i * r_i) * (C32 + C27 * r_v + C7 * r_v * r_v - 1);
+			const double C53 = 2 * H_xm * r_v / (r_i * r_i) * (C33 + C28 * r_v + C8 * r_v * r_v);
+			const double C54 = 2 * H_xm * r_v / (r_i * r_i) * (C34 + C29 * r_v + C9 * r_v * r_v);
+			const double C55 = 2 * H_xm * r_v / (r_i * r_i) * (C35 + C30 * r_v + C10 * r_v * r_v);
+
+			// Heat source from mixture to liquid due to phase change coefficients
+			const double C56 = - h_vx_x * C41;
+			const double C57 = - h_vx_x * C42;
+			const double C58 = - h_vx_x * C43;
+			const double C59 = - h_vx_x * C44;
+			const double C60 = - h_vx_x * C45;
+
+			// Heat source from liquid to mixture due to phase change coefficients
+			const double C61 = h_xv_v * C41;
+			const double C62 = h_xv_v * C42;
+			const double C63 = h_xv_v * C43;
+			const double C64 = h_xv_v * C44;
+			const double C65 = h_xv_v * C45;
+
+			// Heat source from wall to liquid due to heat flux coefficients
+			const double C66 = 2 * k_w / r_i * (C16 + 2 * r_i * C11);
+			const double C67 = 2 * k_w / r_i * (C17 + 2 * r_i * C12);
+			const double C68 = 2 * k_w / r_i * (C18 + 2 * r_i * C13);
+			const double C69 = 2 * k_w / r_i * (C19 + 2 * r_i * C14);
+			const double C70 = 2 * k_w / r_i * (C20 + 2 * r_i * C15);
+
+			// Heat source from liquid to wall due to heat flux coefficients
+			const double C71 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C16 + 2 * r_i * C11);
+			const double C72 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C17 + 2 * r_i * C12);
+			const double C73 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C18 + 2 * r_i * C13);
+			const double C74 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C19 + 2 * r_i * C14);
+			const double C75 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C20 + 2 * r_i * C15);
+
+            //const double C1 = 2 * k_w * (r_o - r_i) * alpha;
+            //const double C65 = -C1 * gamma + (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) * k_x - 2 * r_i * k_x;
+            //const double C2 = 1.0 / (Ex4 - Evi1 * Ex3);
+            //const double C3 = (C1 + C2 * Ex3) / C65;
+            //const double C4 = -C1 / C65;
+            //const double C5 = (-C2 * Ex6 - C2 * Ex7 * rho_m[i] * Rv) / C65;
+            //const double C6 = (-C2 * Ex7 * Rv * T_m[i]) / C65;
+            //const double C7 = (-q_pp + C1 * q_pp * (Eio1 - r_i) - C2 * Ex8 + 2 * C2 * Ex7 * rho_m[i] * T_m[i] * Rv) / C65;
+            //const double C8 = alpha + C2 * Ex3 + alpha * gamma * C3;
+            //const double C9 = -alpha + alpha * gamma * C4;
+            //const double C10 = -C2 * Ex6 - C2 * Ex7 * Rv * rho_m[i] + alpha * gamma * C5;
+            //const double C11 = -C2 * Ex7 * T_m[i] * Rv + alpha * gamma * C6;
+            //const double C12 = alpha * q_pp / k_w * (Eio1 - r_i) - C2 * Ex8 + 2 * C2 * Ex7 * T_m[i] * Rv * rho_m[i] + alpha * gamma * C7;
+            //const double C13 = -2 * r_o * C8;
+            //const double C14 = -2 * r_o * C9;
+            //const double C15 = -2 * r_o * C10;
+            //const double C16 = -2 * r_o * C11;
+            //const double C17 = -2 * r_o * C12 + q_pp / k_w;
+            //const double C18 = 2 * r_o * Eio1 - Eio2;
+            //const double C19 = C18 * C8;
+            //const double C20 = C18 * C9 + 1;
+            //const double C21 = C18 * C10;
+            //const double C22 = C18 * C11;
+            //const double C23 = C18 * C12 - Eio1 * q_pp / k_w;
+            //const double C24 = 1.0 / (Ex4 - Evi1 * Ex3);
+            //const double C25 = Ex5 - Evi2 * Ex3;
+            //const double C26 = -C24 * Ex3 - C25 * C24 * C3;
+            //const double C27 = -C25 * C24 * C4;
+            //const double C28 = C24 * Ex6 + C24 * Ex7 * Rv * rho_m[i] - C25 * C24 * C5;
+            //const double C29 = C24 * Ex7 * Rv * T_m[i] - C25 * C24 * C6;
+            //const double C30 = C24 * Ex8 - 2 * C24 * Ex7 * Rv * T_m[i] * rho_m[i] - C25 * C24 * C7;
+            //const double C31 = 1 - Evi1 * C26 - Evi2 * C3;
+            //const double C32 = -Evi1 * C27 - Evi2 * C4;
+            //const double C33 = -Evi1 * C28 - Evi2 * C5;
+            //const double C34 = -Evi1 * C29 - Evi2 * C6;
+            //const double C35 = -Evi1 * C30 - Evi2 * C7;
+            //const double C66 = C31 + r_v * C26 + r_v * r_v * C3;
+            //const double C67 = C32 + r_v * C27 + r_v * r_v * C4;
+            //const double C68 = C33 + r_v * C28 + r_v * r_v * C5;
+            //const double C69 = C34 + r_v * C29 + r_v * r_v * C6;
+            //const double C70 = C35 + r_v * C30 + r_v * r_v * C7;
+
+            //const double C36 = bGamma * C31 + bGamma * r_v * C26 + bGamma * r_v * r_v * C3;
+            //const double C37 = bGamma * C32 + bGamma * r_v * C27 + bGamma * r_v * r_v * C4;
+            //const double C38 = bGamma * C33 + bGamma * r_v * C28 + bGamma * r_v * r_v * C5 + cGamma * Rv * rho_m[i];
+            //const double C39 = bGamma * C34 + bGamma * r_v * C29 + bGamma * r_v * r_v * C6 + cGamma * Rv * T_m[i];
+            //const double C40 = aGamma + bGamma * C35 + bGamma * r_v * C30 + bGamma * r_v * r_v * C7 - 2 * cGamma * Rv * T_m[i] * rho_m[i];
+            //const double C41 = 2 * H_xm * r_v / (r_i * r_i);
+            //const double C42 = C41 * C31 + C41 * C26 * r_v + C41 * C3 * r_v * r_v;
+            //const double C43 = C41 * C32 + C41 * C27 * r_v + C41 * C4 * r_v * r_v;
+            //const double C44 = C41 * C33 + C41 * C28 * r_v + C41 * C5 * r_v * r_v - C41;
+            //const double C45 = C41 * C34 + C41 * C29 * r_v + C41 * C6 * r_v * r_v;
+            //const double C46 = C41 * C35 + C41 * C30 * r_v + C41 * C7 * r_v * r_v;
+            //const double C47 = -k_x * 2 * r_v / (r_i * r_i);
+            //const double C48 = C47 * C26 + 2 * r_v * C47 * C3;
+            //const double C49 = C47 * C27 + 2 * r_v * C47 * C4;
+            //const double C50 = C47 * C28 + 2 * r_v * C47 * C5;
+            //const double C51 = C47 * C29 + 2 * r_v * C47 * C6;
+            //const double C52 = C47 * C30 + 2 * r_v * C47 * C7;
+            //const double C53 = k_w * 2 / r_i;
+            //const double C54 = C53 * C13 + 2 * r_i * C53 * C8;
+            //const double C55 = C53 * C14 + 2 * r_i * C53 * C9;
+            //const double C56 = C53 * C15 + 2 * r_i * C53 * C10;
+            //const double C57 = C53 * C16 + 2 * r_i * C53 * C11;
+            //const double C58 = C53 * C17 + 2 * r_i * C53 * C12;
+            //const double C59 = 219.0;
+            //const double C60 = 275.32;
+            //const double C61 = 511.58;
+            //const double C62 = -1.0 / Tc * (C60 + C61 / (2 * std::sqrt(1 - T_l[i] / Tc)));
+            //const double C63 = C59 + C60 * (1.0 - T_l[i] / Tc) + C61 * std::sqrt(1.0 - T_l[i] / Tc) + T_l[i] / Tc * (C60 + C61 / (2 * std::sqrt(1.0 - T_l[i] / Tc)));
+            //const double C64 = -k_w * 2 * r_i / (r_o * r_o - r_i * r_i);
 
             T_sur[i] = C66 * T_l[i] + C67 * T_w[i] + C68 * T_m[i] + C69 * rho_m[i] + C70;
 
@@ -1057,7 +1158,6 @@ int main() {
                 alpha_m[i] / dt
                 + (alpha_m[i] * v_m[i] * H(v_m[i])) / dz
                 - (alpha_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz
-                - C39
             );
 
             add(D[i], 0, 2,
@@ -1066,25 +1166,29 @@ int main() {
                 - (rho_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz
             );
 
+            add(D[i], 0, 4,
+                - C41
+			);
+
             add(D[i], 0, 6,
                 + (alpha_m[i] * rho_m[i] * H(v_m[i])) / dz
                 + (alpha_m[i + 1] * rho_m[i + 1] * (1 - H(v_m[i]))) / dz
             );
 
             add(D[i], 0, 8, 
-                - C38
+                - C42
             );
 
             add(D[i], 0, 9, 
-                - C36
+                - C43
             );
 
             add(D[i], 0, 10, 
-                - C37
+                -C44
             );
 
             Q[i][0] = 
-                + C40  
+                + C45
                 + 2 * ( 
                     + alpha_m[i] * rho_m[i] * v_m[i] * H(v_m[i])
                     + alpha_m[i + 1] * rho_m[i + 1] * v_m[i] * (1 - H(v_m[i]))
@@ -1116,10 +1220,6 @@ int main() {
 
             // Mass liquid equation
 
-            add(D[i], 1, 0, 
-                + C39
-            );
-
             add(D[i], 1, 1,
                 + eps_v * (alpha_l[i] / dt)
                 + eps_v * (alpha_l[i] * v_l[i] * H(v_l[i])) / dz
@@ -1132,26 +1232,30 @@ int main() {
                 - eps_v * (rho_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz
             );
 
+            add(D[i], 1, 4,
+                + C41
+			);
+
             add(D[i], 1, 7,
                 + eps_v * (alpha_l[i] * rho_l[i] * H(v_l[i])) / dz
                 + eps_v * (alpha_l[i + 1] * rho_l[i + 1] * (1 - H(v_l[i]))) / dz
             );
 
             add(D[i], 1, 8, 
-                + C38
+                + C42
             );
 
             add(D[i], 1, 9, 
-                + C36
+				+ C43
             );
 
             add(D[i], 1, 10, 
-                + C37
+                + C44
             );
 
 
             Q[i][1] = 
-                - C40
+                - C45
                 + 2 * (
                     + eps_v * (alpha_l[i] * rho_l[i] * v_l[i] * H(v_l[i]))
                     + eps_v * (alpha_l[i + 1] * rho_l[i + 1] * v_l[i] * (1 - H(v_l[i])))
@@ -1197,7 +1301,7 @@ int main() {
                 + (alpha_m[i] * cp_m_p * T_m[i]) / dt
                 + (alpha_m[i] * cp_m_p * T_m[i] * v_m[i] * H(v_m[i])) / dz
                 - (alpha_m[i] * cp_m_p * T_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz
-                - C45 - h_xv_v * C39
+
             );
 
             add(D[i], 2, 2,
@@ -1207,6 +1311,10 @@ int main() {
                 + p_m[i] * (v_m[i] * H(v_m[i]) + v_m[i - 1] * H(v_m[i - 1])) / dz
                 + p_m[i] / dt
             );
+
+            add(D[i], 2, 4,
+                - C51 - C61
+			);
 
             add(D[i], 2, 6,
                 + (alpha_m[i] * rho_m[i] * cp_m_p * T_m[i] * H(v_m[i]) + alpha_m[i + 1] * rho_m[i + 1] * cp_m_r * T_m[i + 1] * (1 - H(v_m[i]))) / dz
@@ -1219,15 +1327,15 @@ int main() {
                 - (alpha_m[i] * rho_m[i] * cp_m_p * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz
                 + (alpha_m[i] * k_m_p * H(v_m[i]) + alpha_m[i + 1] * k_m_r * (1 - H(v_m[i]))) / (dz * dz)
                 + (alpha_m[i - 1] * k_m_l * H(v_m[i - 1]) + alpha_m[i] * k_m_p * (1 - H(v_m[i - 1]))) / (dz * dz)
-                - C44 - h_xv_v * C38
+                - C52 - C62
             );
 
             add(D[i], 2, 9, 
-                - C42 - h_vx_x * C36
+				- C53 - C63
             );
 
             add(D[i], 2, 10, 
-                - C43 - h_xv_v * C37
+                - C54 - C64
             );
 
             Q[i][2] = 
@@ -1245,7 +1353,7 @@ int main() {
                     - alpha_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))
                     ) / dz
                 + p_m[i] * alpha_m[i] / dt
-                + C46 + h_xv_v * C40;
+                + C55 + C65;
 
             add(L[i], 2, 0,
                 - (alpha_m[i - 1] * cp_m_l * T_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz
@@ -1296,10 +1404,6 @@ int main() {
             const double k_l_l = liquid_sodium::k(T_l[i - 1]);
             const double k_l_r = liquid_sodium::k(T_l[i + 1]);
 
-            add(D[i], 3, 0, 
-                - C57 - h_xv_v * C39 - C51
-            );
-
             add(D[i], 3, 1,
                 + eps_v * (alpha_l[i] * T_l[i] * cp_l_p) / dt
                 + eps_v * (alpha_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])) / dz
@@ -1314,13 +1418,17 @@ int main() {
                 + eps_v * p_l[i] / dt
             );
 
+            add(D[i], 3, 4,
+                - C46 - C56 - C66
+            );
+
             add(D[i], 3, 7, 
                 + eps_v * (alpha_l[i] * rho_l[i] * cp_l_p * T_l[i] * H(v_l[i]) + alpha_l[i + 1] * rho_l[i + 1] * cp_l_r * T_l[i + 1] * (1 - H(v_l[i]))) / dz
                 + eps_v * (p_l[i] * (alpha_l[i] * H(v_l[i]) + alpha_l[i + 1] * (1 - H(v_l[i]))) / dz)
             );
 
             add(D[i], 3, 8, 
-                - C56 - h_vx_x * C38 - C50
+                - C47 - C57 - C67
             );
 
             add(D[i], 3, 9,
@@ -1329,12 +1437,12 @@ int main() {
                 - eps_v * (alpha_l[i] * rho_l[i] * cp_l_p * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz
                 + eps_v * (alpha_l[i] * k_l_p * H(v_l[i]) + alpha_l[i + 1] * k_l_r * (1 - H(v_l[i]))) / (dz * dz)
                 + eps_v * (alpha_l[i - 1] * k_l_l * H(v_l[i - 1]) + alpha_l[i] * k_l_p * (1 - H(v_l[i - 1]))) / (dz * dz)
-                - C44 - h_xv_v * C38
-                - C54 - C48 - h_vx_x * C36
+                - C48 - C58 - C68
+
             );
 
             add(D[i], 3, 10, 
-                - C55 - h_vx_x * C37 - C49
+                - C49 - C59 - C69
             );
 
             Q[i][3] = 
@@ -1353,7 +1461,7 @@ int main() {
                         - alpha_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))
                         ) / dz
                 + eps_v * p_l[i] * alpha_l[i] / dt
-                + C52 + C58 + h_vx_x * C40;
+                + C50 + C60 + C70;
 
             add(L[i], 3, 1,
                 - eps_v * (alpha_l[i - 1] * cp_l_l * T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz
@@ -1407,28 +1515,29 @@ int main() {
             const double k_w_lf = 0.5 * (k_w_l + k_w_p);
             const double k_w_rf = 0.5 * (k_w_r + k_w_p);
 
-            add(D[i], 4, 0, 
-                - C57 * C64 / C53
+            add(D[i], 4, 4, 
+                - C71
             );
 
             add(D[i], 4, 8, 
-                - C56 * C64 / C53
+                - C72
             );
 
             add(D[i], 4, 9, 
-                - C54 * C64 / C53
+                - C73
             );
 
             add(D[i], 4, 10,
                 + (rho_w_p * cp_w_p) / dt
                 - (C55 / C53) * C64
                 + (k_w_lf + k_w_rf) / (dz * dz)
+                - C74
             );
 
             Q[i][4] =
                 q_pp * 2 * r_o / (r_o * r_o - r_i * r_i)
                 + (rho_w_p * cp_w_p * T_w[i]) / dt
-                + C58 * C64 / C53;
+                + C75;
 
             add(L[i], 4, 10,
                 - k_w_lf / (dz * dz)
@@ -1710,7 +1819,7 @@ int main() {
             T_w[i] = X[i][10];
         }
 
-        if (n % 10 == 0) {
+        if (n % 100 == 0) {
             for (int i = 0; i < N; ++i) {
 
                 v_velocity_output << X[i][6] << ", ";
