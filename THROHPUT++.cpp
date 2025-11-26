@@ -894,6 +894,8 @@ int main() {
 	std::vector<double> heat_source_vapor_liquid_flux(N, 0.0);
 	std::vector<double> heat_source_liquid_vapor_flux(N, 0.0);
 
+    std::vector<double> p_saturation(N, 0.0);
+
     std::vector<double> Gamma_xv(N, 0.0);
     std::vector<double> T_sur(N, 600.0);
 
@@ -1684,6 +1686,8 @@ int main() {
 
             heat_source_vapor_liquid_flux[i] = C46 * p_m[i] + C47 * T_m[i] + C48 * T_l[i] + C49 * T_w[i] + C50;
             heat_source_liquid_vapor_flux[i] = C51 * p_m[i] + C52 * T_m[i] + C53 * T_l[i] + C54 * T_w[i] + C65;
+
+            p_saturation[i] = Psat;
         }
 
         // First node boundary conditions
@@ -1782,20 +1786,20 @@ int main() {
         if (n % 100 == 0) {
             for (int i = 0; i < N; ++i) {
 
-                v_velocity_output << X[i][6] << ", ";
-                v_pressure_output << X[i][4] << ", ";
-                v_temperature_output << X[i][8] << ", ";
-                v_rho_output << X[i][0] << ", ";
+                v_velocity_output << X[i][6] << " ";
+                v_pressure_output << X[i][4] << " ";
+                v_temperature_output << X[i][8] << " ";
+                v_rho_output << X[i][0] << " ";
 
-                l_velocity_output << X[i][7] << ", ";
-                l_pressure_output << X[i][5] << ", ";
-                l_temperature_output << X[i][9] << ", ";
-                l_rho_output << X[i][1] << ", ";
+                l_velocity_output << X[i][7] << " ";
+                l_pressure_output << X[i][5] << " ";
+                l_temperature_output << X[i][9] << " ";
+                l_rho_output << X[i][1] << " ";
 
-                w_temperature_output << X[i][10] << ", ";
+                w_temperature_output << X[i][10] << " ";
 
-                v_alpha_output << X[i][2] << ", ";
-                l_alpha_output << X[i][3] << ", ";
+                v_alpha_output << X[i][2] << " ";
+                l_alpha_output << X[i][3] << " ";
             }
 
             v_velocity_output << "\n";
