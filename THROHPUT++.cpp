@@ -755,7 +755,7 @@ int main() {
     
     // Environmental boundary conditions
     const double h_conv = 10;               ///< Convective heat transfer coefficient for external heat removal [W/m^2/K]
-    const double power = 1e3;               ///< Power at the evaporator side [W]
+    const double power = 1e4;               ///< Power at the evaporator side [W]
     const double T_env = 280.0;             ///< External environmental temperature [K]
 
     // Evaporation and condensation parameters
@@ -790,7 +790,7 @@ int main() {
     const double A_v_cross = M_PI * r_v * r_v;                                  ///< Vapor cross-sectional area [m^2]
 
     // Time-stepping parameters
-    double dt = 1e-7;                                   ///< Initial time step [s] (then it is updated according to the limits)
+    double dt = 1e-6;                                   ///< Initial time step [s] (then it is updated according to the limits)
     const int tot_iter = 100000;                        ///< Number of timesteps
     const double time_total = tot_iter * dt;            ///< Total simulation time [s]
 
@@ -807,7 +807,7 @@ int main() {
     const int N_c = static_cast<int>(std::ceil(condenser_length / dz));     ///< Number of nodes of the condenser region [-]
     const int N_a = N - (N_e + N_c);                                        ///< Number of nodes of the adiabadic region [-]
 
-    const double T_full = 800.0;                                            ///< Uniform temperature initialization [K]
+    const double T_full = 600.0;                                            ///< Uniform temperature initialization [K]
 
     const double q_pp = power / (2 * M_PI * evaporator_length * r_o);       ///< Heat flux at evaporator from given power [W/m^2]
 
@@ -835,22 +835,22 @@ int main() {
     std::ofstream v_alpha_output("results/vapor_alpha.txt", std::ios::trunc);
     std::ofstream l_alpha_output("results/liquid_alpha.txt", std::ios::trunc);
 
-    mesh_output << std::setprecision(4);
+    mesh_output << std::setprecision(8);
 
-    v_velocity_output << std::setprecision(4);
-    v_pressure_output << std::setprecision(4);
-    v_temperature_output << std::setprecision(4);
-    v_rho_output << std::setprecision(4);
+    v_velocity_output << std::setprecision(8);
+    v_pressure_output << std::setprecision(8);
+    v_temperature_output << std::setprecision(8);
+    v_rho_output << std::setprecision(8);
 
-    l_velocity_output << std::setprecision(4);
-    l_pressure_output << std::setprecision(4);
-    l_temperature_output << std::setprecision(4);
-    l_rho_output << std::setprecision(4);
+    l_velocity_output << std::setprecision(8);
+    l_pressure_output << std::setprecision(8);
+    l_temperature_output << std::setprecision(8);
+    l_rho_output << std::setprecision(8);
 
-    w_temperature_output << std::setprecision(4);
+    w_temperature_output << std::setprecision(8);
 
-    v_alpha_output << std::setprecision(4);
-    l_alpha_output << std::setprecision(4);
+    v_alpha_output << std::setprecision(8);
+    l_alpha_output << std::setprecision(8);
    
     for (int i = 0; i < N; ++i) mesh_output << i * dz << " ";
 
@@ -867,12 +867,35 @@ int main() {
     std::vector<double> p_l(N, 2650);
     std::vector<double> v_m(N, 1.0);
     std::vector<double> v_l(N, -0.01);
-    std::vector<double> T_m(N, 800);
-    std::vector<double> T_l(N, 800);
-    std::vector<double> T_w(N, 800);
+    //std::vector<double> T_m(N, 600);
+    //std::vector<double> T_l(N, 600);
+    //std::vector<double> T_w(N, 600);
+
+    std::vector<double> T_m(N);
+    std::vector<double> T_l(N);
+    std::vector<double> T_w(N);
+
+    for (int i = 0; i < N; ++i) {
+        const double f = double(i) / double(N - 1);   // da 0 a 1
+        const double T = 800.0 + f * (600.0 - 800.0); // lineare 800 → 600
+        T_m[i] = T;
+        T_l[i] = T;
+        T_w[i] = T;
+    }
+
+	std::vector<double> mass_source(N, 0.0);
+
+	std::vector<double> heat_source_wall_liquid_flux(N, 0.0);
+	std::vector<double> heat_source_liquid_wall_flux(N, 0.0);
+
+	std::vector<double> heat_source_vapor_liquid_phase(N, 0.0);
+	std::vector<double> heat_source_liquid_vapor_phase(N, 0.0);
+
+	std::vector<double> heat_source_vapor_liquid_flux(N, 0.0);
+	std::vector<double> heat_source_liquid_vapor_flux(N, 0.0);
 
     std::vector<double> Gamma_xv(N, 0.0);
-    std::vector<double> T_sur(N, 800.0);
+    std::vector<double> T_sur(N, 600.0);
 
     std::vector<SparseBlock> L(N), D(N), R(N);
     std::vector<VecBlock> Q(N), X(N);
@@ -1651,7 +1674,16 @@ int main() {
 
             DenseBlock D_dense = to_dense(D[i]);
 
-            printf("");
+            mass_source[i] = C41 * p_m[i] + C42 * T_m[i] + C43 * T_l[i] + C44 * T_w[i] + C45;
+
+            heat_source_wall_liquid_flux[i] = C66 * p_m[i] + C67 * T_m[i] + C68 * T_l[i] + C69 * T_w[i] + C70;
+            heat_source_liquid_wall_flux[i] = C71 * p_m[i] + C72 * T_m[i] + C73 * T_l[i] + C74 * T_w[i] + C75;
+
+            heat_source_vapor_liquid_phase[i] = C56 * p_m[i] + C57 * T_m[i] + C58 * T_l[i] + C59 * T_w[i] + C60;
+            heat_source_liquid_vapor_phase[i] = C61 * p_m[i] + C62 * T_m[i] + C63 * T_l[i] + C64 * T_w[i] + C65;
+
+            heat_source_vapor_liquid_flux[i] = C46 * p_m[i] + C47 * T_m[i] + C48 * T_l[i] + C49 * T_w[i] + C50;
+            heat_source_liquid_vapor_flux[i] = C51 * p_m[i] + C52 * T_m[i] + C53 * T_l[i] + C54 * T_w[i] + C65;
         }
 
         // First node boundary conditions
