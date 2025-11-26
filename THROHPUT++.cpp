@@ -1048,79 +1048,7 @@ int main() {
 			const double C74 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C19 + 2 * r_i * C14);
 			const double C75 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C20 + 2 * r_i * C15);
 
-            //const double C1 = 2 * k_w * (r_o - r_i) * alpha;
-            //const double C65 = -C1 * gamma + (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) * k_x - 2 * r_i * k_x;
-            //const double C2 = 1.0 / (Ex4 - Evi1 * Ex3);
-            //const double C3 = (C1 + C2 * Ex3) / C65;
-            //const double C4 = -C1 / C65;
-            //const double C5 = (-C2 * Ex6 - C2 * Ex7 * rho_m[i] * Rv) / C65;
-            //const double C6 = (-C2 * Ex7 * Rv * T_m[i]) / C65;
-            //const double C7 = (-q_pp + C1 * q_pp * (Eio1 - r_i) - C2 * Ex8 + 2 * C2 * Ex7 * rho_m[i] * T_m[i] * Rv) / C65;
-            //const double C8 = alpha + C2 * Ex3 + alpha * gamma * C3;
-            //const double C9 = -alpha + alpha * gamma * C4;
-            //const double C10 = -C2 * Ex6 - C2 * Ex7 * Rv * rho_m[i] + alpha * gamma * C5;
-            //const double C11 = -C2 * Ex7 * T_m[i] * Rv + alpha * gamma * C6;
-            //const double C12 = alpha * q_pp / k_w * (Eio1 - r_i) - C2 * Ex8 + 2 * C2 * Ex7 * T_m[i] * Rv * rho_m[i] + alpha * gamma * C7;
-            //const double C13 = -2 * r_o * C8;
-            //const double C14 = -2 * r_o * C9;
-            //const double C15 = -2 * r_o * C10;
-            //const double C16 = -2 * r_o * C11;
-            //const double C17 = -2 * r_o * C12 + q_pp / k_w;
-            //const double C18 = 2 * r_o * Eio1 - Eio2;
-            //const double C19 = C18 * C8;
-            //const double C20 = C18 * C9 + 1;
-            //const double C21 = C18 * C10;
-            //const double C22 = C18 * C11;
-            //const double C23 = C18 * C12 - Eio1 * q_pp / k_w;
-            //const double C24 = 1.0 / (Ex4 - Evi1 * Ex3);
-            //const double C25 = Ex5 - Evi2 * Ex3;
-            //const double C26 = -C24 * Ex3 - C25 * C24 * C3;
-            //const double C27 = -C25 * C24 * C4;
-            //const double C28 = C24 * Ex6 + C24 * Ex7 * Rv * rho_m[i] - C25 * C24 * C5;
-            //const double C29 = C24 * Ex7 * Rv * T_m[i] - C25 * C24 * C6;
-            //const double C30 = C24 * Ex8 - 2 * C24 * Ex7 * Rv * T_m[i] * rho_m[i] - C25 * C24 * C7;
-            //const double C31 = 1 - Evi1 * C26 - Evi2 * C3;
-            //const double C32 = -Evi1 * C27 - Evi2 * C4;
-            //const double C33 = -Evi1 * C28 - Evi2 * C5;
-            //const double C34 = -Evi1 * C29 - Evi2 * C6;
-            //const double C35 = -Evi1 * C30 - Evi2 * C7;
-            //const double C66 = C31 + r_v * C26 + r_v * r_v * C3;
-            //const double C67 = C32 + r_v * C27 + r_v * r_v * C4;
-            //const double C68 = C33 + r_v * C28 + r_v * r_v * C5;
-            //const double C69 = C34 + r_v * C29 + r_v * r_v * C6;
-            //const double C70 = C35 + r_v * C30 + r_v * r_v * C7;
-
-            //const double C36 = bGamma * C31 + bGamma * r_v * C26 + bGamma * r_v * r_v * C3;
-            //const double C37 = bGamma * C32 + bGamma * r_v * C27 + bGamma * r_v * r_v * C4;
-            //const double C38 = bGamma * C33 + bGamma * r_v * C28 + bGamma * r_v * r_v * C5 + cGamma * Rv * rho_m[i];
-            //const double C39 = bGamma * C34 + bGamma * r_v * C29 + bGamma * r_v * r_v * C6 + cGamma * Rv * T_m[i];
-            //const double C40 = aGamma + bGamma * C35 + bGamma * r_v * C30 + bGamma * r_v * r_v * C7 - 2 * cGamma * Rv * T_m[i] * rho_m[i];
-            //const double C41 = 2 * H_xm * r_v / (r_i * r_i);
-            //const double C42 = C41 * C31 + C41 * C26 * r_v + C41 * C3 * r_v * r_v;
-            //const double C43 = C41 * C32 + C41 * C27 * r_v + C41 * C4 * r_v * r_v;
-            //const double C44 = C41 * C33 + C41 * C28 * r_v + C41 * C5 * r_v * r_v - C41;
-            //const double C45 = C41 * C34 + C41 * C29 * r_v + C41 * C6 * r_v * r_v;
-            //const double C46 = C41 * C35 + C41 * C30 * r_v + C41 * C7 * r_v * r_v;
-            //const double C47 = -k_x * 2 * r_v / (r_i * r_i);
-            //const double C48 = C47 * C26 + 2 * r_v * C47 * C3;
-            //const double C49 = C47 * C27 + 2 * r_v * C47 * C4;
-            //const double C50 = C47 * C28 + 2 * r_v * C47 * C5;
-            //const double C51 = C47 * C29 + 2 * r_v * C47 * C6;
-            //const double C52 = C47 * C30 + 2 * r_v * C47 * C7;
-            //const double C53 = k_w * 2 / r_i;
-            //const double C54 = C53 * C13 + 2 * r_i * C53 * C8;
-            //const double C55 = C53 * C14 + 2 * r_i * C53 * C9;
-            //const double C56 = C53 * C15 + 2 * r_i * C53 * C10;
-            //const double C57 = C53 * C16 + 2 * r_i * C53 * C11;
-            //const double C58 = C53 * C17 + 2 * r_i * C53 * C12;
-            //const double C59 = 219.0;
-            //const double C60 = 275.32;
-            //const double C61 = 511.58;
-            //const double C62 = -1.0 / Tc * (C60 + C61 / (2 * std::sqrt(1 - T_l[i] / Tc)));
-            //const double C63 = C59 + C60 * (1.0 - T_l[i] / Tc) + C61 * std::sqrt(1.0 - T_l[i] / Tc) + T_l[i] / Tc * (C60 + C61 / (2 * std::sqrt(1.0 - T_l[i] / Tc)));
-            //const double C64 = -k_w * 2 * r_i / (r_o * r_o - r_i * r_i);
-
-            T_sur[i] = C66 * T_l[i] + C67 * T_w[i] + C68 * T_m[i] + C69 * rho_m[i] + C70;
+			T_sur[i] = C36 * p_m[i] + C37 * T_m[i] + C38 * T_l[i] + C39 * T_w[i] + C40;
 
             phi_x_v[i] = beta * (sigma_e * Psat - sigma_c * Omega * p_m[i]);
             Gamma_xv[i] = 2 * r_v * eps_s / (r_i * r_i) * phi_x_v[i];
@@ -1697,10 +1625,10 @@ int main() {
             );
 
             add(D[i], 8, 9, 
-                C62
+                -1.0 / Tc * (275.32 + 511.58 / (2 * std::sqrt(1 - T_l[i] / Tc)))
             );
 
-            Q[i][8] = C63;
+            Q[i][8] = 219.0 + 275.32 * (1.0 - T_l[i] / Tc) + 511.58 * std::sqrt(1.0 - T_l[i] / Tc) + T_l[i] / Tc * (275.32 + 511.58 / (2 * std::sqrt(1.0 - T_l[i] / Tc)));
 
             // Volume fraction sum
 
