@@ -755,20 +755,20 @@ int main() {
     
     // Environmental boundary conditions
     const double h_conv = 10;               ///< Convective heat transfer coefficient for external heat removal [W/m^2/K]
-    const double power = 1e4;               ///< Power at the evaporator side [W]
+    const double power = 1e3;               ///< Power at the evaporator side [W]
     const double T_env = 280.0;             ///< External environmental temperature [K]
 
     // Evaporation and condensation parameters
     const double eps_s = 1.0;               ///< Surface fraction of the wick available for phasic interface [-]
-    const double sigma_e = 1.0;             ///< Evaporation accomodation coefficient [-]. 1 means optimal evaporation
-    const double sigma_c = 1.0;             ///< Condensation accomodation coefficient [-]. 1 means optimal condensation
+    const double sigma_e = 0.05;             ///< Evaporation accomodation coefficient [-]. 1 means optimal evaporation
+    const double sigma_c = 0.05;             ///< Condensation accomodation coefficient [-]. 1 means optimal condensation
     double Omega = 1.0;                     ///< Omega factor initialization
 
     const double Tc = 2509.46;
     double const eps_v = 1.0;
 
     // Geometric parameters
-    const int N = 50;                                                           ///< Number of axial nodes [-]
+    const int N = 10;                                                           ///< Number of axial nodes [-]
     const double l = 0.982; 			                                        ///< Length of the heat pipe [m]
     const double dz = l / N;                                                    ///< Axial discretization step [m]
     const double evaporator_length = 0.502;                                     ///< Evaporator length [m]
@@ -809,7 +809,8 @@ int main() {
 
     const double T_full = 600.0;                                            ///< Uniform temperature initialization [K]
 
-    const double q_pp = power / (2 * M_PI * evaporator_length * r_o);       ///< Heat flux at evaporator from given power [W/m^2]
+    const double q_pp_evaporator = power / (2 * M_PI * evaporator_length * r_o);        ///< Heat flux at evaporator from given power [W/m^2]
+	std::vector<double> q_pp(N, 0.0);                                                   ///< Heat flux profile [W/m^2]
 
     // Mass sources/fluxes
     std::vector<double> phi_x_v(N, 0.0);                ///< Mass flux [kg/m2/s] at the wick-vapor interface (positive if evaporation)
@@ -835,22 +836,22 @@ int main() {
     std::ofstream v_alpha_output("results/vapor_alpha.txt", std::ios::trunc);
     std::ofstream l_alpha_output("results/liquid_alpha.txt", std::ios::trunc);
 
-    mesh_output << std::setprecision(8);
+    mesh_output << std::setprecision(5);
 
-    v_velocity_output << std::setprecision(8);
-    v_pressure_output << std::setprecision(8);
-    v_temperature_output << std::setprecision(8);
-    v_rho_output << std::setprecision(8);
+    v_velocity_output << std::setprecision(5);
+    v_pressure_output << std::setprecision(5);
+    v_temperature_output << std::setprecision(5);
+    v_rho_output << std::setprecision(5);
 
-    l_velocity_output << std::setprecision(8);
-    l_pressure_output << std::setprecision(8);
-    l_temperature_output << std::setprecision(8);
-    l_rho_output << std::setprecision(8);
+    l_velocity_output << std::setprecision(5);
+    l_pressure_output << std::setprecision(5);
+    l_temperature_output << std::setprecision(5);
+    l_rho_output << std::setprecision(5);
 
-    w_temperature_output << std::setprecision(8);
+    w_temperature_output << std::setprecision(5);
 
-    v_alpha_output << std::setprecision(8);
-    l_alpha_output << std::setprecision(8);
+    v_alpha_output << std::setprecision(5);
+    l_alpha_output << std::setprecision(5);
    
     for (int i = 0; i < N; ++i) mesh_output << i * dz << " ";
 
@@ -881,6 +882,10 @@ int main() {
         T_m[i] = T;
         T_l[i] = T;
         T_w[i] = T;
+
+        // Inizializza P vapore alla P di saturazione locale per evitare flash istantanei
+        p_m[i] = vapor_sodium::P_sat(T);
+        p_l[i] = p_m[i]; // Assumi equilibrio meccanico iniziale
     }
 
 	std::vector<double> mass_source(N, 0.0);
@@ -945,6 +950,16 @@ int main() {
                     + (vapor_sodium::h(T_m[i]) - vapor_sodium::h(T_sur[i]));
             }
 
+            // Update heat fluxes at the interfaces
+            if (i <= evaporator_nodes) q_pp[i] = q_pp_evaporator;                                  ///< Evaporator imposed heat flux
+            else if (i >= (N - condenser_nodes)) {
+
+                double conv = h_conv * (T_w[i] - T_env);                                          ///< Condenser convective heat flux
+                double irr = emissivity * sigma * (std::pow(T_w[i], 4) - std::pow(T_env, 4));     ///< Condenser irradiation heat flux
+
+                q_pp[i] = -(conv + irr);                                                           ///< Heat flux at the outer wall (positive if to the wall)
+            }
+
             const double beta = 1.0 / std::sqrt(2 * M_PI * Rv * T_sur[i]);
             const double b = -phi_x_v[i] / (p_m[i] * std::sqrt(2.0 / (Rv * T_m[i])));
 
@@ -973,14 +988,14 @@ int main() {
             const double C2 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex6;
 			const double C3 = + (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex3 + 1;
 			const double C4 = - 1;
-			const double C5 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * (Ex8 - Ex7 * p_m[i]) + q_pp / k_w * (Eio1 - r_i);
+			const double C5 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * (Ex8 - Ex7 * p_m[i]) + q_pp[i] / k_w * (Eio1 - r_i);
 
 			// c_x coefficients
 			const double C6 = (2 * k_w * (r_o - r_i) * alpha * C1 + k_x * Ex7 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			const double C7 = (2 * k_w * (r_o - r_i) * alpha * C2 + k_x * Ex6 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			const double C8 = (2 * k_w * (r_o - r_i) * alpha * C3 - k_x * Ex3 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			const double C9 = (2 * k_w * (r_o - r_i) * alpha * C4) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
-			const double C10 = (- q_pp + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * (Ex8 - p_m[i] * Ex7) / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+			const double C10 = (- q_pp[i] + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * (Ex8 - p_m[i] * Ex7) / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 
             // c_w coefficients
 			const double C11 = alpha * (C1 + gamma * C6);
@@ -994,14 +1009,14 @@ int main() {
 			const double C17 = - 2 * r_o * C12;
 			const double C18 = - 2 * r_o * C13;
 			const double C19 = - 2 * r_o * C14;
-			const double C20 = - 2 * r_o * C15 + q_pp / k_w;
+			const double C20 = - 2 * r_o * C15 + q_pp[i] / k_w;
 
 			// a_w coefficients
 			const double C21 = (2 * r_o * Eio1 - Eio2) * C11;
 			const double C22 = (2 * r_o * Eio1 - Eio2) * C12;
 			const double C23 = (2 * r_o * Eio1 - Eio2) * C13;
 			const double C24 = (2 * r_o * Eio1 - Eio2) * C14 + 1;
-            const double C25 = (2 * r_o * Eio1 - Eio2) * C15 - q_pp * Eio1 / k_w;
+            const double C25 = (2 * r_o * Eio1 - Eio2) * C15 - q_pp[i] * Eio1 / k_w;
 
 			// b_x coefficients
 			const double C26 = (- (Ex5 - Evi2 * Ex3) * C6 + Ex7) / (Ex4 - Evi1 * Ex3);
@@ -1486,7 +1501,7 @@ int main() {
             );
 
             Q[i][4] =
-                q_pp * 2 * r_o / (r_o * r_o - r_i * r_i)
+                q_pp[i] * 2 * r_o / (r_o * r_o - r_i * r_i)
                 + (rho_w_p * cp_w_p * T_w[i]) / dt
                 + C75;
 
@@ -1639,7 +1654,7 @@ int main() {
                 - rho_m[i] * Rv
             );
 
-            Q[i][7] = -rho_m[i] * T_m[i] * Rv;
+            Q[i][7] = - rho_m[i] * T_m[i] * Rv + p_m[i];
 
             // State liquid equation
 
