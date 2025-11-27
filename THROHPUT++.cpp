@@ -790,7 +790,7 @@ int main() {
     const double A_v_cross = M_PI * r_v * r_v;                                  ///< Vapor cross-sectional area [m^2]
 
     // Time-stepping parameters
-    double dt = 1e-6;                                   ///< Initial time step [s] (then it is updated according to the limits)
+    double dt = 1e-4;                                   ///< Initial time step [s] (then it is updated according to the limits)
     const int tot_iter = 100000;                        ///< Number of timesteps
     const double time_total = tot_iter * dt;            ///< Total simulation time [s]
 
@@ -866,8 +866,8 @@ int main() {
     std::vector<double> alpha_l(N, 0.1);
     std::vector<double> p_m(N, 2650);
     std::vector<double> p_l(N, 2650);
-    std::vector<double> v_m(N, 1.0);
-    std::vector<double> v_l(N, -0.01);
+    std::vector<double> v_m(N, 0.00001);
+    std::vector<double> v_l(N, 0.00001);
     //std::vector<double> T_m(N, 600);
     //std::vector<double> T_l(N, 600);
     //std::vector<double> T_w(N, 600);
@@ -1134,7 +1134,7 @@ int main() {
             );
 
             add(D[i], 0, 4,
-                - C41
+                - 0 * C41
 			);
 
             add(D[i], 0, 6,
@@ -1143,19 +1143,19 @@ int main() {
             );
 
             add(D[i], 0, 8, 
-                - C42
+                - 0 * C42
             );
 
             add(D[i], 0, 9, 
-                - C43
+                - 0 * C43
             );
 
             add(D[i], 0, 10, 
-                - C44
+                - 0 * C44
             );
 
             Q[i][0] = 
-                + C45
+                + 0 * C45
                 + 2 * ( 
                     + alpha_m[i] * rho_m[i] * v_m[i] * H(v_m[i])
                     + alpha_m[i + 1] * rho_m[i + 1] * v_m[i] * (1 - H(v_m[i]))
@@ -1200,7 +1200,7 @@ int main() {
             );
 
             add(D[i], 1, 4,
-                + C41
+                + 0 * C41
 			);
 
             add(D[i], 1, 7,
@@ -1209,20 +1209,20 @@ int main() {
             );
 
             add(D[i], 1, 8, 
-                + C42
+                + 0 * C42
             );
 
             add(D[i], 1, 9, 
-				+ C43
+				+ 0 * C43
             );
 
             add(D[i], 1, 10, 
-                + C44
+                + 0 * C44
             );
 
 
             Q[i][1] = 
-                - C45
+                - 0 * C45
                 + 2 * (
                     + eps_v * (alpha_l[i] * rho_l[i] * v_l[i] * H(v_l[i]))
                     + eps_v * (alpha_l[i + 1] * rho_l[i + 1] * v_l[i] * (1 - H(v_l[i])))
@@ -1280,7 +1280,7 @@ int main() {
             );
 
             add(D[i], 2, 4,
-                - C51 - C61
+                - 0 * C51 - 0 * C61
 			);
 
             add(D[i], 2, 6,
@@ -1294,15 +1294,15 @@ int main() {
                 - (alpha_m[i] * rho_m[i] * cp_m_p * v_m[i - 1] * (1 - H(v_m[i - 1]))) / dz
                 + (alpha_m[i] * k_m_p * H(v_m[i]) + alpha_m[i + 1] * k_m_r * (1 - H(v_m[i]))) / (dz * dz)
                 + (alpha_m[i - 1] * k_m_l * H(v_m[i - 1]) + alpha_m[i] * k_m_p * (1 - H(v_m[i - 1]))) / (dz * dz)
-                - C52 - C62
+                - 0 * C52 - 0 * C62
             );
 
             add(D[i], 2, 9, 
-				- C53 - C63
+				- 0 * C53 - 0 * C63
             );
 
             add(D[i], 2, 10, 
-                - C54 - C64
+                - 0 * C54 - 0 * C64
             );
 
             Q[i][2] = 
@@ -1320,7 +1320,7 @@ int main() {
                     - alpha_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))
                     ) / dz
                 + p_m[i] * alpha_m[i] / dt
-                + C55 + C65;
+                + 0 * C55 + 0 * C65;
 
             add(L[i], 2, 0,
                 - (alpha_m[i - 1] * cp_m_l * T_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz
@@ -1386,7 +1386,7 @@ int main() {
             );
 
             add(D[i], 3, 4,
-                - C46 - C56 - C66
+                - 0 * C46 - 0 * C56 - 0 * C66
             );
 
             add(D[i], 3, 7, 
@@ -1395,7 +1395,7 @@ int main() {
             );
 
             add(D[i], 3, 8, 
-                - C47 - C57 - C67
+                - 0 * C47 - 0 * C57 - 0 * C67
             );
 
             add(D[i], 3, 9,
@@ -1404,12 +1404,12 @@ int main() {
                 - eps_v * (alpha_l[i] * rho_l[i] * cp_l_p * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz
                 + eps_v * (alpha_l[i] * k_l_p * H(v_l[i]) + alpha_l[i + 1] * k_l_r * (1 - H(v_l[i]))) / (dz * dz)
                 + eps_v * (alpha_l[i - 1] * k_l_l * H(v_l[i - 1]) + alpha_l[i] * k_l_p * (1 - H(v_l[i - 1]))) / (dz * dz)
-                - C48 - C58 - C68
+                - 0 * C48 - 0 * C58 - 0 * C68
 
             );
 
             add(D[i], 3, 10, 
-                - C49 - C59 - C69
+                - 0 * C49 - 0 * C59 - 0 * C69
             );
 
             Q[i][3] = 
@@ -1428,7 +1428,7 @@ int main() {
                         - alpha_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))
                         ) / dz
                 + eps_v * p_l[i] * alpha_l[i] / dt
-                + C50 + C60 + C70;
+                + 0 * C50 + 0 * C60 + 0 * C70;
 
             add(L[i], 3, 1,
                 - eps_v * (alpha_l[i - 1] * cp_l_l * T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz
@@ -1483,27 +1483,27 @@ int main() {
             const double k_w_rf = 0.5 * (k_w_r + k_w_p);
 
             add(D[i], 4, 4, 
-                - C71
+                - 0 * C71
             );
 
             add(D[i], 4, 8, 
-                - C72
+                - 0 * C72
             );
 
             add(D[i], 4, 9, 
-                - C73
+                - 0 * C73
             );
 
             add(D[i], 4, 10,
                 + (rho_w_p * cp_w_p) / dt
                 + (k_w_lf + k_w_rf) / (dz * dz)
-                - C74
+                - 0 * C74
             );
 
             Q[i][4] =
                 q_pp[i] * 2 * r_o / (r_o * r_o - r_i * r_i)
                 + (rho_w_p * cp_w_p * T_w[i]) / dt
-                + C75;
+                + 0 * C75;
 
             add(L[i], 4, 10,
                 - k_w_lf / (dz * dz)
@@ -1654,7 +1654,7 @@ int main() {
                 - rho_m[i] * Rv
             );
 
-            Q[i][7] = - rho_m[i] * T_m[i] * Rv + p_m[i];
+            Q[i][7] = - rho_m[i] * T_m[i] * Rv;
 
             // State liquid equation
 
