@@ -1,133 +1,116 @@
+import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, Slider
-import textwrap, sys, os
+from io import StringIO
+import textwrap
 
-# ----------------------------------------------------------
-# Loader sicuro: ogni file diventa SEMPRE (ntime, nnodes)
-# ----------------------------------------------------------
-def safe_load_matrix(filename, fill_value=-1e9):
+def safe_loadtxt(filename, fill_value=-1e9):
     def parse_line(line):
-        return line.replace('-nan(ind)', str(fill_value)) \
-                   .replace('nan', str(fill_value)) \
-                   .replace('NaN', str(fill_value))
+        return (line.replace('-nan(ind)', str(fill_value))
+                    .replace('nan', str(fill_value))
+                    .replace('NaN', str(fill_value)))
     with open(filename, 'r') as f:
-        rows = []
-        for line in f:
-            line = parse_line(line).strip()
-            if not line:
-                continue
-            parts = line.split()
-            rows.append([float(x) for x in parts])
-    return np.array(rows, dtype=float)
+        lines = [parse_line(l) for l in f]
+    return np.loadtxt(StringIO(''.join(lines)))
 
-# ----------------------------------------------------------
-# Input
-# ----------------------------------------------------------
-if len(sys.argv) < 3:
-    print("Usage: python plot_time.py t.txt y1.txt y2.txt ...")
+root = os.getcwd()
+cases = [d for d in os.listdir(root) if os.path.isdir(d) and "case" in d]
+
+if len(cases) == 0:
+    print("No case folders found")
     sys.exit(1)
 
-t_file = sys.argv[1]
-y_files = sys.argv[2:]
+print("Available cases:")
+for i, c in enumerate(cases):
+    print(i, c)
 
-for f in [t_file] + y_files:
+idx = int(input("Select case index: "))
+case = cases[idx]
+
+x_file = os.path.join(case, "mesh.txt")
+time_file = os.path.join(case, "time.txt")
+
+
+targets = [
+    "vapor_temperature.txt",
+    "vapor_velocity.txt",
+    "vapor_pressure.txt",
+    "vapor_alpha.txt",
+    "liquid_temperature.txt",
+    "liquid_velocity.txt",
+    "liquid_pressure.txt",
+    "liquid_alpha.txt",
+    "rho_vapor.txt",
+    "liquid_rho.txt",
+    "wall_temperature.txt",
+]
+
+y_files = [os.path.join(case, p) for p in targets]
+
+for f in [x_file, time_file] + y_files:
     if not os.path.isfile(f):
-        print("Error: file not found ->", f)
+        print("Missing file:", f)
         sys.exit(1)
 
-# ----------------------------------------------------------
-# Caricamento tempo (colonna singola)
-# ----------------------------------------------------------
-t = safe_load_matrix(t_file).flatten()
-ntime = len(t)
+x = safe_loadtxt(x_file)
+time = safe_loadtxt(time_file)
+Y = [safe_loadtxt(f) for f in y_files]
 
-# ----------------------------------------------------------
-# Caricamento variabili (matrici)
-# ----------------------------------------------------------
-Y = []
-for f in y_files:
-    M = safe_load_matrix(f)
-    if M.shape[0] != ntime:
-        print("Dimension mismatch:", f, "ha", M.shape[0], "righe, ma il tempo ha", ntime)
-        sys.exit(1)
-    Y.append(M)
-
-nnodes = Y[0].shape[1]
-
-# ----------------------------------------------------------
-# Variabili e unità
-# ----------------------------------------------------------
 names = [
-    "Vapor velocity","Vapor pressure","Vapor temperature","Vapor density","Vapor alpha",
-    "Liquid velocity","Liquid pressure","Liquid temperature","Liquid density","Liquid alpha",
+    "Vapor temperature",
+    "Vapor velocity",
+    "Vapor pressure",
+    "Vapor volume fraction",
+    "Liquid temperature",
+    "Liquid velocity",
+    "Liquid pressure",
+    "Liquid volume fraction",
+    "Vapor density",
+    "Liquid density",
     "Wall temperature"
 ]
 
 units = [
-    "[m/s]","[Pa]","[K]","[kg/m³]","[-]",
-    "[m/s]","[Pa]","[K]","[kg/m³]","[-]",
+    "[K]",
+    "[m/s]",
+    "[Pa]",
+    "[-]",
+    "[K]",
+    "[m/s]",
+    "[Pa]",
+    "[-]",
+    "[kg/m³]",
+    "[kg/m³]",
     "[K]"
 ]
 
-# ----------------------------------------------------------
-# Y-limits robusti
-# ----------------------------------------------------------
+
 def robust_ylim(y):
-    lo, hi = np.percentile(y, [1, 99])
+    vals = y.flatten() if y.ndim > 1 else y
+    lo, hi = np.percentile(vals, [1, 99])
     if lo == hi:
-        lo, hi = np.min(y), np.max(y)
-    m = 0.1*(hi-lo)
-    return lo-m, hi+m
+        lo, hi = np.min(vals), np.max(vals)
+    margin = 0.1 * (hi - lo)
+    return lo - margin, hi + margin
 
-# ----------------------------------------------------------
-# Figure
-# ----------------------------------------------------------
-fig, ax = plt.subplots(figsize=(11,6))
+def pos_to_index(val):
+    return np.searchsorted(x, val, side='left')
+
+def index_to_pos(i):
+    return x[i]
+
+fig, ax = plt.subplots(figsize=(11, 6))
 plt.subplots_adjust(left=0.08, bottom=0.25, right=0.70)
-
 line, = ax.plot([], [], lw=2)
 ax.grid(True)
 ax.set_xlabel("Time [s]")
 
-# ----------------------------------------------------------
-# Slider per nodo
-# ----------------------------------------------------------
 ax_slider = plt.axes([0.15, 0.1, 0.55, 0.03])
-slider = Slider(ax_slider, "Node", 0, nnodes-1, valinit=0, valstep=1)
+slider = Slider(ax_slider, "Axial pos [m]", x.min(), x.max(), valinit=x[0])
 
-# ----------------------------------------------------------
-# Stato
-# ----------------------------------------------------------
-current_idx = 0
-current_node = 0
-paused = [False]
-current_frame = [0]
-
-def draw_series():
-    y = Y[current_idx][:, current_node]
-    line.set_data(t, y)
-    ax.set_ylim(*robust_ylim(y))
-    ax.set_xlim(t.min(), t.max())
-    ax.set_title(f"{names[current_idx]} {units[current_idx]}")
-
-draw_series()
-
-# ----------------------------------------------------------
-# Slider update
-# ----------------------------------------------------------
-def slider_update(val):
-    global current_node
-    current_node = int(slider.val)
-    draw_series()
-    fig.canvas.draw_idle()
-
-slider.on_changed(slider_update)
-
-# ----------------------------------------------------------
-# Variable buttons
-# ----------------------------------------------------------
 buttons = []
 n_vars = len(Y)
 n_cols = 2
@@ -138,65 +121,99 @@ row_gap = 0.10
 start_x = 0.73
 start_y = 0.86
 
-for i,name in enumerate(names[:n_vars]):
+for i, name in enumerate(names):
     col = i % n_cols
     row = i // n_cols
     label = "\n".join(textwrap.wrap(name, 15))
-    x_pos = start_x + col*(button_width+col_gap)
-    y_pos = start_y - row*row_gap
+    x_pos = start_x + col * (button_width + col_gap)
+    y_pos = start_y - row * row_gap
     b_ax = plt.axes([x_pos, y_pos, button_width, button_height])
     btn = Button(b_ax, label, hovercolor='0.975')
     btn.label.set_fontsize(8)
     buttons.append(btn)
 
-def change_variable(j):
-    global current_idx
-    current_idx = j
-    draw_series()
+ax_play = plt.axes([0.15, 0.02, 0.10, 0.05])
+btn_play = Button(ax_play, "Play", hovercolor='0.975')
+ax_pause = plt.axes([0.27, 0.02, 0.10, 0.05])
+btn_pause = Button(ax_pause, "Pause", hovercolor='0.975')
+ax_reset = plt.axes([0.39, 0.02, 0.10, 0.05])
+btn_reset = Button(ax_reset, "Reset", hovercolor='0.975')
+
+current_idx = 0
+ydata = Y[current_idx]
+
+n_nodes = len(x)
+n_frames = len(time)
+
+ax.set_title(f"{names[current_idx]} {units[current_idx]}")
+ax.set_xlim(time.min(), time.max())
+
+paused = [False]
+current_node = [0]
+
+def draw_node(i, update_slider=True):
+    y = Y[current_idx]
+    line.set_data(time, y[:, i])
+    ax.set_ylim(*robust_ylim(y[:, i]))
+    if update_slider:
+        slider.disconnect(slider_cid)
+        slider.set_val(index_to_pos(i))
+        connect_slider()
+    return line,
+
+def update_auto(i):
+    if not paused[0]:
+        current_node[0] = i
+        draw_node(i)
+    return line,
+
+def slider_update(val):
+    i = pos_to_index(val)
+    current_node[0] = i
+    draw_node(i, update_slider=False)
     fig.canvas.draw_idle()
 
-for i,btn in enumerate(buttons):
-    btn.on_clicked(lambda event,j=i: change_variable(j))
+def connect_slider():
+    global slider_cid
+    slider_cid = slider.on_changed(slider_update)
 
-# ----------------------------------------------------------
-# Play/pause/reset
-# ----------------------------------------------------------
-ax_play = plt.axes([0.15, 0.02, 0.10, 0.05])
-btn_play = Button(ax_play, "Play")
+connect_slider()
 
-ax_pause = plt.axes([0.27, 0.02, 0.10, 0.05])
-btn_pause = Button(ax_pause, "Pause")
+def change_variable(idx):
+    global current_idx, ydata
+    current_idx = idx
+    ydata = Y[idx]
+    ax.set_title(f"{names[idx]} {units[idx]}")
+    draw_node(current_node[0])
 
-ax_reset = plt.axes([0.39, 0.02, 0.10, 0.05])
-btn_reset = Button(ax_reset, "Reset")
+for i, btn in enumerate(buttons):
+    btn.on_clicked(lambda event, j=i: change_variable(j))
 
 def pause(event):
     paused[0] = True
 
+def reset(event):
+    paused[0] = True
+    current_node[0] = 0
+    draw_node(0)
+    slider.set_val(x[0])
+    fig.canvas.draw_idle()
+
 def play(event):
     paused[0] = False
 
-def reset(event):
-    paused[0] = True
-    current_frame[0] = 0
-    slider.set_val(0)
-
-btn_pause.on_clicked(pause)
 btn_play.on_clicked(play)
+btn_pause.on_clicked(pause)
 btn_reset.on_clicked(reset)
 
-# ----------------------------------------------------------
-# Animazione: aggiorna solo la y (il nodo lo decide lo slider)
-# ----------------------------------------------------------
-def update_auto(i):
-    if not paused[0]:
-        current_frame[0] = i
-        draw_series()
-    return line,
-
-ani = FuncAnimation(fig, update_auto,
-                    frames=range(ntime),
-                    interval=10000/ntime,
-                    blit=False, repeat=True)
+skip = max(1, n_nodes // 200)
+ani = FuncAnimation(
+    fig,
+    update_auto,
+    frames=range(0, n_nodes, skip),
+    interval=10000 / (n_nodes/skip),
+    blit=False,
+    repeat=True
+)
 
 plt.show()
