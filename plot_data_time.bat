@@ -1,6 +1,6 @@
 @echo off
-REM Esegue lo script Python con i nuovi file specificati
-python plot_data.py ^
+
+python plot_data_time.py ^
     mesh.txt ^
     results\vapor_velocity.txt ^
     results\vapor_pressure.txt ^

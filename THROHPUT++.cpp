@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <cassert>
+#include <string>
 
 bool warnings = false;
 
@@ -768,7 +769,7 @@ int main() {
     double const eps_v = 1.0;
 
     // Geometric parameters
-    const int N = 10;                                                           ///< Number of axial nodes [-]
+    const int N = 100;                                                           ///< Number of axial nodes [-]
     const double l = 0.982; 			                                        ///< Length of the heat pipe [m]
     const double dz = l / N;                                                    ///< Axial discretization step [m]
     const double evaporator_length = 0.502;                                     ///< Evaporator length [m]
@@ -790,7 +791,7 @@ int main() {
     const double A_v_cross = M_PI * r_v * r_v;                                  ///< Vapor cross-sectional area [m^2]
 
     // Time-stepping parameters
-    double dt = 1e-4;                                   ///< Initial time step [s] (then it is updated according to the limits)
+    double dt = 1e-8;                                   ///< Initial time step [s] (then it is updated according to the limits)
     const int tot_iter = 100000;                        ///< Number of timesteps
     const double time_total = tot_iter * dt;            ///< Total simulation time [s]
 
@@ -816,42 +817,54 @@ int main() {
     std::vector<double> phi_x_v(N, 0.0);                ///< Mass flux [kg/m2/s] at the wick-vapor interface (positive if evaporation)
 
     // Create result folder
-    std::filesystem::create_directories("results");
+    int new_case = 0;
+    std::string name = "case_0";
+    while (true) {
+        std::string name = "case_" + std::to_string(new_case);
+        if (!std::filesystem::exists(name)) {
+            std::filesystem::create_directory(name);
+            break;
+        }
+        new_case++;
+    }
 
     // Print results in file
-    std::ofstream mesh_output("mesh.txt", std::ios::trunc);
+    std::ofstream mesh_output(name + "/mesh.txt", std::ios::trunc);
+    std::ofstream time_output(name + "/time.txt", std::ios::trunc);
 
-    std::ofstream v_velocity_output("results/vapor_velocity.txt", std::ios::trunc);
-    std::ofstream v_pressure_output("results/vapor_pressure.txt", std::ios::trunc);
-    std::ofstream v_temperature_output("results/vapor_temperature.txt", std::ios::trunc);
-    std::ofstream v_rho_output("results/rho_vapor.txt", std::ios::trunc);
+    std::ofstream v_velocity_output(name + "/vapor_velocity.txt", std::ios::trunc);
+    std::ofstream v_pressure_output(name + "/vapor_pressure.txt", std::ios::trunc);
+    std::ofstream v_temperature_output(name + "/vapor_temperature.txt", std::ios::trunc);
+    std::ofstream v_rho_output(name + "/rho_vapor.txt", std::ios::trunc);
 
-    std::ofstream l_velocity_output("results/liquid_velocity.txt", std::ios::trunc);
-    std::ofstream l_pressure_output("results/liquid_pressure.txt", std::ios::trunc);
-    std::ofstream l_temperature_output("results/liquid_temperature.txt", std::ios::trunc);
-    std::ofstream l_rho_output("results/liquid_rho.txt", std::ios::trunc);
+    std::ofstream l_velocity_output(name + "/liquid_velocity.txt", std::ios::trunc);
+    std::ofstream l_pressure_output(name + "/liquid_pressure.txt", std::ios::trunc);
+    std::ofstream l_temperature_output(name + "/liquid_temperature.txt", std::ios::trunc);
+    std::ofstream l_rho_output(name + "/liquid_rho.txt", std::ios::trunc);
 
-    std::ofstream w_temperature_output("results/wall_temperature.txt", std::ios::trunc);
+    std::ofstream w_temperature_output(name + "/wall_temperature.txt", std::ios::trunc);
 
-    std::ofstream v_alpha_output("results/vapor_alpha.txt", std::ios::trunc);
-    std::ofstream l_alpha_output("results/liquid_alpha.txt", std::ios::trunc);
+    std::ofstream v_alpha_output(name + "/vapor_alpha.txt", std::ios::trunc);
+    std::ofstream l_alpha_output(name + "reults/liquid_alpha.txt", std::ios::trunc);
 
-    mesh_output << std::setprecision(5);
+    const int global_precision = 4;
 
-    v_velocity_output << std::setprecision(5);
-    v_pressure_output << std::setprecision(5);
-    v_temperature_output << std::setprecision(5);
-    v_rho_output << std::setprecision(5);
+    mesh_output << std::setprecision(global_precision);
 
-    l_velocity_output << std::setprecision(5);
-    l_pressure_output << std::setprecision(5);
-    l_temperature_output << std::setprecision(5);
-    l_rho_output << std::setprecision(5);
+    v_velocity_output << std::setprecision(global_precision);
+    v_pressure_output << std::setprecision(global_precision);
+    v_temperature_output << std::setprecision(global_precision);
+    v_rho_output << std::setprecision(global_precision);
 
-    w_temperature_output << std::setprecision(5);
+    l_velocity_output << std::setprecision(global_precision);
+    l_pressure_output << std::setprecision(global_precision);
+    l_temperature_output << std::setprecision(global_precision);
+    l_rho_output << std::setprecision(global_precision);
 
-    v_alpha_output << std::setprecision(5);
-    l_alpha_output << std::setprecision(5);
+    w_temperature_output << std::setprecision(global_precision);
+
+    v_alpha_output << std::setprecision(global_precision);
+    l_alpha_output << std::setprecision(global_precision);
    
     for (int i = 0; i < N; ++i) mesh_output << i * dz << " ";
 
@@ -866,8 +879,9 @@ int main() {
     std::vector<double> alpha_l(N, 0.1);
     std::vector<double> p_m(N, 2650);
     std::vector<double> p_l(N, 2650);
-    std::vector<double> v_m(N, 0.00001);
-    std::vector<double> v_l(N, 0.00001);
+    std::vector<double> v_m(N, 1.0);
+    std::vector<double> v_l(N, -0.001);
+
     //std::vector<double> T_m(N, 600);
     //std::vector<double> T_l(N, 600);
     //std::vector<double> T_w(N, 600);
@@ -1162,7 +1176,8 @@ int main() {
                     - alpha_m[i - 1] * rho_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])
                     - alpha_m[i] * rho_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))
                     ) / dz
-                + 2 * (rho_m[i] * alpha_m[i]) / dt;
+                + 2 * (rho_m[i] * alpha_m[i]) / dt
+                + mass_source[i];
 
             add(L[i], 0, 0,
                 - (alpha_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz
@@ -1231,7 +1246,8 @@ int main() {
                     ) / dz
                 + 2 * (
                     + eps_v * (rho_l[i] * alpha_l[i])
-                    ) / dt;
+                    ) / dt
+                - mass_source[i];
 
             add(L[i], 1, 1,
                 - eps_v * (alpha_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz
@@ -1320,7 +1336,9 @@ int main() {
                     - alpha_m[i] * v_m[i - 1] * (1 - H(v_m[i - 1]))
                     ) / dz
                 + p_m[i] * alpha_m[i] / dt
-                + 0 * C55 + 0 * C65;
+                + 0 * C55 + 0 * C65
+                + heat_source_liquid_vapor_flux[i]
+                + heat_source_liquid_vapor_phase[i];
 
             add(L[i], 2, 0,
                 - (alpha_m[i - 1] * cp_m_l * T_m[i - 1] * v_m[i - 1] * H(v_m[i - 1])) / dz
@@ -1428,7 +1446,10 @@ int main() {
                         - alpha_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))
                         ) / dz
                 + eps_v * p_l[i] * alpha_l[i] / dt
-                + 0 * C50 + 0 * C60 + 0 * C70;
+                + 0 * C50 + 0 * C60 + 0 * C70
+                + heat_source_wall_liquid_flux[i]
+                + heat_source_vapor_liquid_flux[i]
+                + heat_source_vapor_liquid_phase[i];
 
             add(L[i], 3, 1,
                 - eps_v * (alpha_l[i - 1] * cp_l_l * T_l[i - 1] * v_l[i - 1] * H(v_l[i - 1])) / dz
@@ -1503,7 +1524,8 @@ int main() {
             Q[i][4] =
                 q_pp[i] * 2 * r_o / (r_o * r_o - r_i * r_i)
                 + (rho_w_p * cp_w_p * T_w[i]) / dt
-                + 0 * C75;
+                + 0 * C75
+                + heat_source_liquid_wall_flux[i];
 
             add(L[i], 4, 10,
                 - k_w_lf / (dz * dz)
@@ -1796,7 +1818,9 @@ int main() {
             T_w[i] = X[i][10];
         }
 
-        if (n % 100 == 0) {
+        const int output_every = 100;
+
+        if (n % output_every == 0) {
             for (int i = 0; i < N; ++i) {
 
                 v_velocity_output << X[i][6] << " ";
@@ -1813,6 +1837,8 @@ int main() {
 
                 v_alpha_output << X[i][2] << " ";
                 l_alpha_output << X[i][3] << " ";
+
+				time_output << n * output_every * dt << " ";
             }
 
             v_velocity_output << "\n";
@@ -1844,6 +1870,8 @@ int main() {
 
             v_alpha_output.flush();
             l_alpha_output.flush();
+
+            time_output.flush();
         }
     }
 
@@ -1861,4 +1889,6 @@ int main() {
 
     v_alpha_output.close();
     l_alpha_output.close();
+
+    time_output.close();
 }
