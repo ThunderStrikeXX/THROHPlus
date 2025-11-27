@@ -971,7 +971,7 @@ int main() {
             // Delta coefficients
             const double C1 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex7;
             const double C2 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex6;
-			const double C3 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex3 + 1;
+			const double C3 = + (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex3 + 1;
 			const double C4 = - 1;
 			const double C5 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * (Ex8 - Ex7 * p_m[i]) + q_pp / k_w * (Eio1 - r_i);
 
@@ -980,7 +980,7 @@ int main() {
 			const double C7 = (2 * k_w * (r_o - r_i) * alpha * C2 + k_x * Ex6 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			const double C8 = (2 * k_w * (r_o - r_i) * alpha * C3 - k_x * Ex3 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			const double C9 = (2 * k_w * (r_o - r_i) * alpha * C4) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
-			const double C10 = (- q_pp + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * Ex8 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+			const double C10 = (- q_pp + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * (Ex8 - p_m[i] * Ex7) / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 
             // c_w coefficients
 			const double C11 = alpha * (C1 + gamma * C6);
@@ -1029,14 +1029,14 @@ int main() {
 			const double C42 = bGamma * C37;
 			const double C43 = bGamma * C38;
 			const double C44 = bGamma * C39;
-			const double C45 = aGamma + bGamma * C40 - cGamma * p_m[i];
+			const double C45 = bGamma * C40 - cGamma * p_m[i] + aGamma;
 
             // Heat source from mixture to liquid due to heat flux coefficients
 			const double C46 = - 2 * k_x * r_v / (r_i * r_i) * (C26 + 2 * r_v * C6);
-			const double C47 = -2 * k_x * r_v / (r_i * r_i) * (C27 + 2 * r_v * C7);
-			const double C48 = -2 * k_x * r_v / (r_i * r_i) * (C28 + 2 * r_v * C8);
-			const double C49 = -2 * k_x * r_v / (r_i * r_i) * (C29 + 2 * r_v * C9);
-			const double C50 = -2 * k_x * r_v / (r_i * r_i) * (C30 + 2 * r_v * C10);
+			const double C47 = - 2 * k_x * r_v / (r_i * r_i) * (C27 + 2 * r_v * C7);
+			const double C48 = - 2 * k_x * r_v / (r_i * r_i) * (C28 + 2 * r_v * C8);
+			const double C49 = - 2 * k_x * r_v / (r_i * r_i) * (C29 + 2 * r_v * C9);
+			const double C50 = - 2 * k_x * r_v / (r_i * r_i) * (C30 + 2 * r_v * C10);
 
 			// Heat source from liquid to mixture due to heat flux coefficients
 			const double C51 = 2 * H_xm * r_v / (r_i * r_i) * (C31 + C26 * r_v + C6 * r_v * r_v);
@@ -1068,10 +1068,10 @@ int main() {
 
 			// Heat source from liquid to wall due to heat flux coefficients
 			const double C71 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C16 + 2 * r_i * C11);
-			const double C72 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C17 + 2 * r_i * C12);
-			const double C73 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C18 + 2 * r_i * C13);
-			const double C74 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C19 + 2 * r_i * C14);
-			const double C75 = -2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C20 + 2 * r_i * C15);
+			const double C72 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C17 + 2 * r_i * C12);
+			const double C73 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C18 + 2 * r_i * C13);
+			const double C74 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C19 + 2 * r_i * C14);
+			const double C75 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C20 + 2 * r_i * C15);
 
 			T_sur[i] = C36 * p_m[i] + C37 * T_m[i] + C38 * T_l[i] + C39 * T_w[i] + C40;
 
