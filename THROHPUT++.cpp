@@ -793,7 +793,7 @@ int main() {
     const double A_v_cross = M_PI * r_v * r_v;                                  ///< Vapor cross-sectional area [m^2]
 
     // Time-stepping parameters
-    double dt = 1e-8;                                   ///< Initial time step [s] (then it is updated according to the limits)
+    double dt = 1e-6;                                   ///< Initial time step [s] (then it is updated according to the limits)
     const int tot_iter = 100000;                        ///< Number of timesteps
     const double time_total = tot_iter * dt;            ///< Total simulation time [s]
 
@@ -936,6 +936,21 @@ int main() {
     const double Evi2 = 0.5 * (r_i * r_i + r_v * r_v);
 
 	const int Kmax = 20;    ///< Maximum number of Picard iterations per timestep
+
+    for (int i = 0; i < N; ++i) {
+        X[i][0] = rho_m[i];
+        X[i][1] = rho_l[i];
+        X[i][2] = alpha_m[i];
+        X[i][3] = alpha_l[i];
+        X[i][4] = p_m[i];
+        X[i][5] = p_l[i];
+        X[i][6] = v_m[i];
+        X[i][7] = v_l[i];
+        X[i][8] = T_m[i];
+        X[i][9] = T_l[i];
+        X[i][10] = T_w[i];
+    }
+
     
 	// Time-stepping loop
     for(int n = 0; n < tot_iter; ++n) {
@@ -1367,7 +1382,7 @@ int main() {
                 );
 
                 Q[i][2] = 
-                    + 3 * (alpha_m_old[i] * cp_m_p * T_m[i] * rho_m_old[i]) / dt
+                    + 3 * (alpha_m_old[i] * cp_m_p * T_m_old[i] * rho_m_old[i]) / dt
                     + 3 * ( 
                         + alpha_m[i] * rho_m[i] * cp_m_p * T_m[i] * v_m[i] * H(v_m[i]) 
                         + alpha_m[i + 1] * rho_m[i + 1] * cp_m_r * T_m[i + 1] * v_m[i + 1] * (1 - H(v_m[i]))
@@ -1445,7 +1460,7 @@ int main() {
                     + eps_v * (rho_l[i] * cp_l_p * T_l[i] * v_l[i] * H(v_l[i])) / dz
                     - eps_v * (rho_l[i] * cp_l_p * T_l[i] * v_l[i - 1] * (1 - H(v_l[i - 1]))) / dz
                     + eps_v * p_l[i] * (v_l[i] * H(v_l[i]) + v_l[i - 1] * H(v_l[i - 1])) / dz
-                    + eps_v * p_l[i] / dt
+                    + eps_v * p_l_old[i] / dt
                 );
 
                 add(D[i], 3, 4,
@@ -1710,7 +1725,7 @@ int main() {
                 // State mixture equation
 
                 add(D[i], 7, 0, 
-                    - T_m[i] * Rv
+                    - T_m_old[i] * Rv
                 );
 
                 add(D[i], 7, 4,
@@ -1718,10 +1733,10 @@ int main() {
                 );
 
                 add(D[i], 7, 8, 
-                    - rho_m[i] * Rv
+                    - rho_m_old[i] * Rv
                 );
 
-                Q[i][7] = - rho_m[i] * T_m[i] * Rv;
+                Q[i][7] = - rho_m_old[i] * T_m_old[i] * Rv;
 
                 // State liquid equation
 
