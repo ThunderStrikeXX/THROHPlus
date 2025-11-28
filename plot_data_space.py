@@ -46,7 +46,19 @@ targets = [
     "rho_vapor.txt",
     "liquid_rho.txt",
     "wall_temperature.txt",
+
+    "gamma_xv.txt",
+    "phi_xv.txt",
+    "heat_source_wall_liquid_flux.txt",
+    "heat_source_liquid_wall_flux.txt",
+    "heat_source_vapor_liquid_phase.txt",
+    "heat_source_liquid_vapor_phase.txt",
+    "heat_source_vapor_liquid_flux.txt",
+    "heat_source_liquid_vapor_flux.txt",
+    "p_saturation.txt",
+    "T_sur.txt",
 ]
+
 
 y_files = [os.path.join(case, p) for p in targets]
 
@@ -71,8 +83,20 @@ names = [
     "Liquid volume fraction",
     "Vapor density",
     "Liquid density",
-    "Wall temperature"
+    "Wall temperature",
+
+    "Gamma_xv",
+    "Phi_xv",
+    "Heat source wall→liquid (flux)",
+    "Heat source liquid→wall (flux)",
+    "Heat source vapor→liquid (phase)",
+    "Heat source liquid→vapor (phase)",
+    "Heat source vapor→liquid (flux)",
+    "Heat source liquid→vapor (flux)",
+    "Saturation pressure",
+    "T_sur"
 ]
+
 
 units = [
     "[K]",
@@ -85,8 +109,20 @@ units = [
     "[-]",
     "[kg/m³]",
     "[kg/m³]",
-    "[K]"
+    "[K]",
+
+    "[kg/(m³·s)]",         # Gamma_xv
+    "[kg/(m²·s)]",         # Phi_xv
+    "[W/m³]",              # heat wall→liquid
+    "[W/m³]",              # heat liquid→wall
+    "[W/m³]",              # heat vapor→liquid (phase)
+    "[W/m³]",              # heat liquid→vapor (phase)
+    "[W/m³]",              # heat vapor→liquid (flux)
+    "[W/m³]",              # heat liquid→vapor (flux)
+    "[Pa]",                # psat
+    "[K]"                  # T_sur
 ]
+
 
 
 # -------------------- Utils --------------------
