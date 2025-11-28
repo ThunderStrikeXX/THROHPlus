@@ -800,7 +800,7 @@ int main() {
     const double Evi2 = 0.5 * (r_i * r_i + r_v * r_v);
 
     // Time-stepping parameters
-    double dt = 1e-5;                                   /// Initial time step [s] (then it is updated according to the limits)
+    double dt = 1e-6;                                   /// Initial time step [s] (then it is updated according to the limits)
     const int tot_iter = 100000;                        /// Number of timesteps
     const double time_total = tot_iter * dt;            /// Total simulation time [s]
 
@@ -1915,7 +1915,7 @@ int main() {
 		// Update solution
         X = X_new;
 
-        const int output_every = 1000;
+        const int output_every = 100;
 
         if (n % output_every == 0) {
             for (int i = 0; i < N; ++i) {

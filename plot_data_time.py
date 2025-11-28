@@ -139,7 +139,7 @@ def index_to_pos(i):
     return x[i]
 
 fig, ax = plt.subplots(figsize=(11, 6))
-plt.subplots_adjust(left=0.08, bottom=0.25, right=0.70)
+plt.subplots_adjust(left=0.08, bottom=0.25, right=0.58)
 line, = ax.plot([], [], lw=2)
 ax.grid(True)
 ax.set_xlabel("Time [s]")
@@ -149,12 +149,12 @@ slider = Slider(ax_slider, "Axial pos [m]", x.min(), x.max(), valinit=x[0])
 
 buttons = []
 n_vars = len(Y)
-n_cols = 2
-button_width = 0.12
+n_cols = 3
+button_width = 0.10
 button_height = 0.08
 col_gap = 0.02
 row_gap = 0.10
-start_x = 0.73
+start_x = 0.62
 start_y = 0.86
 
 for i, name in enumerate(names):
