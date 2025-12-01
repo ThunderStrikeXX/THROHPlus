@@ -998,19 +998,20 @@ int main() {
 		// Picard iteration loop
         for (int k = 0; k < Kmax; ++k) {
 
-            for (int i = 0; i < N; ++i) {
-                rho_m[i] = X_iter[i][0];
-                rho_l[i] = X_iter[i][1];
-                alpha_m[i] = X_iter[i][2];
-                alpha_l[i] = X_iter[i][3];
-                p_m[i] = X_iter[i][4];
-                p_l[i] = (X_iter[i][5] > 0 ? X_iter[i][5] : 0.0);
-                v_m[i] = X_iter[i][6];
-                v_l[i] = X_iter[i][7];
-                T_m[i] = X_iter[i][8];
-                T_l[i] = X_iter[i][9];
-                T_w[i] = X_iter[i][10];
-            }
+			// Not necessary since X_iter is already updated at the end of the previous Picard iteration
+            //for (int i = 0; i < N; ++i) {
+            //    rho_m[i] = X_iter[i][0];
+            //    rho_l[i] = X_iter[i][1];
+            //    alpha_m[i] = X_iter[i][2];
+            //    alpha_l[i] = X_iter[i][3];
+            //    p_m[i] = X_iter[i][4];
+            //    p_l[i] = (X_iter[i][5] > 0 ? X_iter[i][5] : 0.0);
+            //    v_m[i] = X_iter[i][6];
+            //    v_l[i] = X_iter[i][7];
+            //    T_m[i] = X_iter[i][8];
+            //    T_l[i] = X_iter[i][9];
+            //    T_w[i] = X_iter[i][10];
+            //}
 
 		    // Space discretization loop
             for(int i = 1; i < N - 1; ++i) {
