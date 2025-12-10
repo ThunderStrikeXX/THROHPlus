@@ -451,6 +451,8 @@ int main() {
     // Secondary useful variables
     std::vector<double> Gamma_xv(N, 0.0);
     std::vector<double> Gamma_xv_lin(N, 0.0);
+    std::vector<double> Gamma_xv_diff(N, 0.0);
+    std::vector<double> Gamma_xv_other(N, 0.0);
     std::vector<double> phi_x_v(N, 0.0);
     std::vector<double> heat_source_wall_liquid_flux(N, 0.0);
     std::vector<double> heat_source_liquid_wall_flux(N, 0.0);
@@ -667,7 +669,7 @@ int main() {
 			    const double C7 = (2 * k_w * (r_o - r_i) * alpha * C2 + k_x * Ex6 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			    const double C8 = (2 * k_w * (r_o - r_i) * alpha * C3 - k_x * Ex3 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			    const double C9 = (2 * k_w * (r_o - r_i) * alpha * C4) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
-			    const double C10 = (- q_pp[i] + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * (Ex8 - p_m[i] * Ex7) / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+			    const double C10 = (- q_pp[i] + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * (Ex8 - p_m_iter[i] * Ex7) / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 
                 // c_w coefficients
 			    const double C11 = alpha * (C1 + gamma * C6);
@@ -695,7 +697,7 @@ int main() {
 			    const double C27 = (- (Ex5 - Evi2 * Ex3) * C7 + Ex6) / (Ex4 - Evi1 * Ex3);
 			    const double C28 = (- (Ex5 - Evi2 * Ex3) * C8 - Ex3) / (Ex4 - Evi1 * Ex3);
 			    const double C29 = (- (Ex5 - Evi2 * Ex3) * C9) / (Ex4 - Evi1 * Ex3);
-			    const double C30 = (- (Ex5 - Evi2 * Ex3) * C10 + Ex8 - p_m[i] * Ex7) / (Ex4 - Evi1 * Ex3);
+			    const double C30 = (- (Ex5 - Evi2 * Ex3) * C10 + Ex8 - p_m_iter[i] * Ex7) / (Ex4 - Evi1 * Ex3);
 
 			    // a_x coefficients
 			    const double C31 = - Evi1 * C26 - Evi2 * C6;
@@ -716,7 +718,7 @@ int main() {
 			    const double C42 = bGamma * C37;
 			    const double C43 = bGamma * C38;
 			    const double C44 = bGamma * C39;
-			    const double C45 = bGamma * C40 - cGamma * p_m[i] + aGamma;
+			    const double C45 = bGamma * C40 - cGamma * p_m_iter[i] + aGamma;
 
                 // Heat source from mixture to liquid due to heat flux coefficients
 			    const double C46 = - 2 * k_x * r_v / (r_i * r_i) * (C26 + 2 * r_v * C6);
@@ -759,9 +761,6 @@ int main() {
 			    const double C73 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C18 + 2 * r_i * C13);
 			    const double C74 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C19 + 2 * r_i * C14);
 			    const double C75 = - 2 * k_w * r_i / (r_o * r_o - r_i * r_i) * (C20 + 2 * r_i * C15);
-
-                phi_x_v[i] = beta * (sigma_e * Psat - sigma_c * Omega * p_m_iter[i]);
-                Gamma_xv[i] = 2 * r_v * eps_s / (r_i * r_i) * phi_x_v[i];
 
                 // DPcap evaluation
 
@@ -1466,7 +1465,15 @@ int main() {
 
                 DenseBlock D_dense = to_dense(D[i]);
 
+                phi_x_v[i] = beta * (sigma_e * Psat - sigma_c * Omega * p_m_iter[i]);
+
+                Gamma_xv[i] = 2 * r_v * eps_s / (r_i * r_i) * phi_x_v[i];
+
                 Gamma_xv_lin[i] = C41 * p_m_iter[i] + C42 * T_m_iter[i] + C43 * T_l_iter[i] + C44 * T_w_iter[i] + C45;
+
+                Gamma_xv_other[i] = aGamma + bGamma * T_sur[i];
+
+                Gamma_xv_diff[i] = Gamma_xv_lin[i] - Gamma_xv_other[i];
 
                 heat_source_wall_liquid_flux[i] = C66 * p_m_iter[i] + C67 * T_m_iter[i] + C68 * T_l_iter[i] + C69 * T_w_iter[i] + C70;
                 heat_source_liquid_wall_flux[i] = C71 * p_m_iter[i] + C72 * T_m_iter[i] + C73 * T_l_iter[i] + C74 * T_w_iter[i] + C75;
