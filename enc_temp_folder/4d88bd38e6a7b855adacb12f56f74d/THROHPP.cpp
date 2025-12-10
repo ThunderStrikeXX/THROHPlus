@@ -660,7 +660,7 @@ int main() {
                 const double C2 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex6;
 			    const double C3 = + (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex3 + 1;
 			    const double C4 = - 1;
-			    const double C5 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * (Ex8 - Ex7 * p_m_iter[i]) + q_pp[i] / k_w * (Eio1 - r_i);
+			    const double C5 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * (Ex8 - Ex7 * p_m[i]) + q_pp[i] / k_w * (Eio1 - r_i);
 
 			    // c_x coefficients
 			    const double C6 = (2 * k_w * (r_o - r_i) * alpha * C1 + k_x * Ex7 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
