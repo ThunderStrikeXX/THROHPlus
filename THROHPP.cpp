@@ -347,7 +347,7 @@ int main() {
     double Omega = 1.0;                     /// Omega factor initialization
 
     // Geometric parameters
-    const int N = 50;                                                           /// Number of axial nodes [-]
+    const int N = 20;                                                           /// Number of axial nodes [-]
     const double l = 0.982; 			                                        /// Length of the heat pipe [m]
     const double dz = l / N;                                                    /// Axial discretization step [m]
     const double evaporator_length = 0.502;                                     /// Evaporator length [m]
@@ -871,13 +871,13 @@ int main() {
                 add(R[i], 0, 0,
 
                     // Convective term
-                    (alpha_m_iter[i + 1] * v_m_iter[i] * (1 - H(v_m_iter[i]))) / dz
+                    + (alpha_m_iter[i + 1] * v_m_iter[i] * (1 - H(v_m_iter[i]))) / dz
                 );
 
                 add(R[i], 0, 2,
 
 					// Convective term
-                    (rho_m_iter[i + 1] * v_m_iter[i] * (1 - H(v_m_iter[i]))) / dz
+                    + (rho_m_iter[i + 1] * v_m_iter[i] * (1 - H(v_m_iter[i]))) / dz
                 );
 
                 // --------------- MASS LIQUID EQUATION -----------------
