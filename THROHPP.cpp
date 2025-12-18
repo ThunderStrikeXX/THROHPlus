@@ -700,14 +700,14 @@ int main() {
                 const double C2 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex6;
 			    const double C3 = + (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * Ex3 + 1;
 			    const double C4 = - 1;
-			    const double C5 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * (Ex8 - Ex7 * p_m_old[i]) + q_pp[i] / k_w * (Eio1 - r_i);
+			    const double C5 = - (Evi1 - r_i) / (Ex4 - Evi1 * Ex3) * (Ex8 - Ex7 * p_m_iter[i]) + q_pp[i] / k_w * (Eio1 - r_i);
 
 			    // c_x coefficients
 			    const double C6 = (2 * k_w * (r_o - r_i) * alpha * C1 + k_x * Ex7 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			    const double C7 = (2 * k_w * (r_o - r_i) * alpha * C2 + k_x * Ex6 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			    const double C8 = (2 * k_w * (r_o - r_i) * alpha * C3 - k_x * Ex3 / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 			    const double C9 = (2 * k_w * (r_o - r_i) * alpha * C4) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
-			    const double C10 = (- q_pp[i] + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * (Ex8 - p_m_old[i] * Ex7) / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
+			    const double C10 = (- q_pp[i] + 2 * k_w * (r_o - r_i) * alpha * C5 + k_x * (Ex8 - p_m_iter[i] * Ex7) / (Ex4 - Evi1 * Ex3)) / (2 * (r_i - r_o) * k_w * alpha * gamma + k_x * (Ex5 - Evi2 * Ex3) / (Ex4 - Evi1 * Ex3) - 2 * r_i * k_x);
 
                 // c_w coefficients
 			    const double C11 = alpha * (C1 + gamma * C6);
@@ -735,7 +735,7 @@ int main() {
 			    const double C27 = (- (Ex5 - Evi2 * Ex3) * C7 + Ex6) / (Ex4 - Evi1 * Ex3);
 			    const double C28 = (- (Ex5 - Evi2 * Ex3) * C8 - Ex3) / (Ex4 - Evi1 * Ex3);
 			    const double C29 = (- (Ex5 - Evi2 * Ex3) * C9) / (Ex4 - Evi1 * Ex3);
-			    const double C30 = (- (Ex5 - Evi2 * Ex3) * C10 + Ex8 - p_m_old[i] * Ex7) / (Ex4 - Evi1 * Ex3);
+			    const double C30 = (- (Ex5 - Evi2 * Ex3) * C10 + Ex8 - p_m_iter[i] * Ex7) / (Ex4 - Evi1 * Ex3);
 
 			    // a_x coefficients
 			    const double C31 = - Evi1 * C26 - Evi2 * C6;
@@ -756,7 +756,7 @@ int main() {
 			    const double C42 = bGamma[i] * C37;
 			    const double C43 = bGamma[i] * C38;
 			    const double C44 = bGamma[i] * C39;
-			    const double C45 = bGamma[i] * C40 - cGamma[i] * p_m_old[i] + aGamma[i];
+			    const double C45 = bGamma[i] * C40 - cGamma[i] * p_m_iter[i] + aGamma[i];
 
                 // Heat source from mixture to liquid due to heat flux coefficients
 			    const double C46 = - 2 * k_x * r_v / (r_i * r_i) * (C26 + 2 * r_v * C6);
@@ -887,8 +887,8 @@ int main() {
                     + C45
 
                     // Temporal term
-                    + (rho_m_old[i] * alpha_m_iter[i]) / dt
-                    + (rho_m_iter[i] * alpha_m_old[i]) / dt
+                    + (rho_m_old[i] * alpha_m_old[i]) / dt
+                    + (rho_m_iter[i] * alpha_m_iter[i]) / dt
 
                     // Convective term
                     + 2 * (
@@ -986,12 +986,12 @@ int main() {
                 Q[i][1] =
 
                     // Temporal term
-                    + eps_v * (rho_l_iter[i] * alpha_l_old[i]) / dt
-                    + eps_v * (rho_l_old[i] * alpha_l_iter[i]) / dt
+                    + eps_v * (rho_l_iter[i] * alpha_l_iter[i]) / dt
+                    + eps_v * (rho_l_old[i] * alpha_l_old[i]) / dt
 
                     // Convective term
                     + 2 * (
-                        +eps_v * (alpha_l_iter[i] * rho_l_iter[i] * v_l_iter[i] * H(v_l_iter[i]))
+                        + eps_v * (alpha_l_iter[i] * rho_l_iter[i] * v_l_iter[i] * H(v_l_iter[i]))
                         + eps_v * (alpha_l_iter[i + 1] * rho_l_iter[i + 1] * v_l_iter[i] * (1 - H(v_l_iter[i])))
                         - eps_v * (alpha_l_iter[i - 1] * rho_l_iter[i - 1] * v_l_iter[i - 1] * H(v_l_iter[i - 1]))
                         - eps_v * (alpha_l_iter[i] * rho_l_iter[i] * v_l_iter[i - 1] * (1 - H(v_l_iter[i - 1])))
@@ -1645,11 +1645,11 @@ int main() {
 
                 // State mixture equation
 
-                add(D[i], 7, 0, - T_m_old[i] * Rv);
+                add(D[i], 7, 0, - T_m_iter[i] * Rv);
                 add(D[i], 7, 4, 1.0);
-                add(D[i], 7, 8, - rho_m_old[i] * Rv);
+                add(D[i], 7, 8, - rho_m_iter[i] * Rv);
 
-                Q[i][7] = - rho_m_old[i] * T_m_old[i] * Rv;
+                Q[i][7] = - rho_m_iter[i] * T_m_iter[i] * Rv;
 
                 // State liquid equation
 
