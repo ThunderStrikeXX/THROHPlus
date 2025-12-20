@@ -246,24 +246,20 @@ namespace vapor_sodium {
 
     /**
     * @brief Friction factor [-] (Prandtl–von Kármán smooth pipe law) as a function of Reynolds number.
-    * Retrieves an error if Re < 0.
-    */
+    * Retrieves an error if Re < 0.*/
+
     inline double f(double Re) {
 
         if (Re <= 0.0) throw std::invalid_argument("Error: Re < 0");
 
         const double t = 0.79 * std::log(Re) - 1.64;
         return 1.0 / (t * t);
-    }
+    }    
 
     /**
     * @brief Nusselt number [-] (Gnielinski correlation) as a function of Reynolds number
     * Retrieves an error if Re < 0 or Nu < 0.
-    */
-    /**
-* @brief Nusselt number [-] (Gnielinski correlation) as a function of Reynolds number
-* Retrieves an error if Re < 0 or Nu < 0.
-*/
+
     inline double Nu(double Re, double Pr) {
 
         if (Re < 0.0 || Pr < 0.0)
@@ -285,15 +281,88 @@ namespace vapor_sodium {
 
         // Valore totale: laminare + incremento turbolento
         return Nu_lam + Nu_turb_inc;
-    }
+    }    */
 
     /**
     * @brief Convective heat transfer coefficient [W/m^2/K] as a function of Reynolds number
     * Retrieves an error if Re < 0 or Nu < 0.
-    */
+
     inline double h_conv(double Re, double Pr, double k, double Dh) {
 
         const double Nu = vapor_sodium::Nu(Re, Pr);
         return Nu * k / Dh;
+    }    */
+
+    /**
+     * @brief Convective heat transfer coefficient [W/m^2/K]
+     *        with smooth blending between laminar and Gnielinski turbulent regimes.
+     *
+     * Regimes:
+     *  - Re <= Re1      : purely laminar
+     *  - Re >= Re2      : purely Gnielinski
+     *  - Re1 < Re < Re2: linear blending
+     */
+    inline double h_conv(
+        double Re,
+        double Pr,
+        double k,
+        double Dh
+    ) {
+        if (Re <= 0.0 || Pr <= 0.0)
+            throw std::invalid_argument("Error: Re or Pr <= 0");
+
+        // -----------------------------
+        // Parameters
+        // -----------------------------
+        constexpr double Nu_lam = 4.36;
+        constexpr double Re1 = 2000.0;
+        constexpr double Re2 = 3000.0;
+
+        // -----------------------------
+        // Laminar
+        // -----------------------------
+        const double Nu_laminar = Nu_lam;
+
+        // -----------------------------
+        // Turbulent (Gnielinski standard)
+        // -----------------------------
+        auto Nu_gnielinski = [&](double Re_loc) {
+            const double f = vapor_sodium::f(Re_loc);
+            const double fp8 = f / 8.0;
+
+            const double num = fp8 * (Re_loc - 1000.0) * Pr;
+            const double den = 1.0 + 12.7 * std::sqrt(fp8)
+                * (std::pow(Pr, 2.0 / 3.0) - 1.0);
+
+            return num / den;
+            };
+
+        // -----------------------------
+        // Regime selection
+        // -----------------------------
+        double Nu;
+
+        if (Re <= Re1) {
+            Nu = Nu_laminar;
+        }
+        else if (Re >= Re2) {
+            Nu = Nu_gnielinski(Re);
+        }
+        else {
+            const double chi = (Re - Re1) / (Re2 - Re1);  // 0 → 1
+            Nu = (1.0 - chi) * Nu_laminar + chi * Nu_gnielinski(Re);
+        }
+
+        // -----------------------------
+        // Convective coefficient
+        // -----------------------------
+        return Nu * k / Dh;
     }
+
+    inline double surf_ten(double T) {
+        constexpr double Tm = 371.0;
+        double val = 0.196 - 2.48e-4 * (T - Tm);
+        return val > 0.0 ? val : 0.0;
+    }
+
 }

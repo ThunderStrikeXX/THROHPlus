@@ -27,12 +27,14 @@ bool warnings = false;
 
 #pragma region find_mu
 
-constexpr int B = 11;  // dimensione blocco
+constexpr int B = 11;           // Number of variables
 
+// Lambda function
 double L(double mu) {
     return (2.0 - (mu * mu + 2.0) * std::sqrt(1.0 - mu * mu)) / (mu * mu * mu);
 }
 
+// Derivative of Lambda
 double dL(double mu) {
     double s = std::sqrt(1.0 - mu * mu);
     double ds = -mu / s;
@@ -46,6 +48,7 @@ double dL(double mu) {
     return (dA * B - A * dB) / (B * B);
 }
 
+// Method to invert the Lambda function and get mu
 double invert(double L_target) {
     double mu = 0.5;
 
@@ -195,7 +198,6 @@ void lu_solve_mat(const DenseBlock& LU, const std::array<int, B>& piv,
 
 // ------------------------- Solve block-tridiagonal -------------------------
 
-
 // Block Thomas solver: performs forward elimination and back substitution on a block-tridiagonal system using per-block LU factorizations.
 void solve_block_tridiag(
     const std::vector<SparseBlock>& L,
@@ -305,14 +307,9 @@ auto add = [&](SparseBlock& B, int p, int q, double v) {
 
 #pragma region other_functions
 
+// Heaviside function for upwind interpolation
 inline int H(double x) {
     return x > 0.0 ? 1 : 0;
-}
-
-inline double surf_ten(double T) {
-    constexpr double Tm = 371.0;
-    double val = 0.196 - 2.48e-4 * (T - Tm);
-    return val > 0.0 ? val : 0.0;
 }
 
 #pragma endregion
@@ -332,19 +329,13 @@ int main() {
     double const eps_v = 1.0;               /// Surface fraction of the wick available for liquid passage [-]
 
     // Wick permeability parameters
-    const double K = 1e-10;                  /// Permeability [m^2]
+    const double K = 1e-10;                 /// Permeability [m^2]
     const double CF = 1e5;                  /// Forchheimer coefficient [1/m]
-    
-    // Environmental boundary conditions
-    const double h_conv = 10;               /// Convective heat transfer coefficient for external heat removal [W/m^2/K]
-    const double power = 100;               /// Power at the evaporator side [W]
-    const double T_env = 280.0;             /// External environmental temperature [K]
 
     // Evaporation and condensation parameters
     const double eps_s = 1.0;               /// Surface fraction of the wick available for phasic interface [-]
     const double sigma_e = 0.05;            /// Evaporation accomodation coefficient [-]. 1 means optimal evaporation
     const double sigma_c = 0.05;            /// Condensation accomodation coefficient [-]. 1 means optimal condensation
-    double Omega = 1.0;                     /// Omega factor initialization
 
     // Geometric parameters
     const int N = 20;                                                           /// Number of axial nodes [-]
@@ -359,25 +350,47 @@ int main() {
     const double r_o = 0.01335;                                                 /// Outer wall radius [m]
     const double r_i = 0.0112;                                                  /// Wall-wick interface radius [m]
     const double r_v = 0.01075;                                                 /// Vapor-wick interface radius [m]
+    const double V_wall = dz * M_PI * (r_o * r_o - r_i * r_i);                  /// Volume of the wall cell [m3]
+    const double V_liquid = dz * M_PI * (r_i * r_i - r_v * r_v);                /// Volume of the liquid cell [m3]
+    const double V_vapor = dz * M_PI * r_v * r_v;                               /// Volume of the vapor cell [m3]
+    const double lateral_surface = dz * 2 * M_PI * r_o;                         /// Lateral outer surface [m2]
 
-    const double V_wall = dz * M_PI * (r_o * r_o - r_i * r_i);
-    const double V_liquid = dz * M_PI * (r_i * r_i - r_v * r_v);
-    const double V_vapor = dz * M_PI * r_v * r_v;
-
-    const double lateral_surface = dz * 2 * M_PI * r_o;
-
+    // Constant geometrical parameters for the radial model
     const double Eio1 = 2.0 / 3.0 * (r_o + r_i - 1 / (1 / r_o + 1 / r_i));
     const double Eio2 = 0.5 * (r_o * r_o + r_i * r_i);
     const double Evi1 = 2.0 / 3.0 * (r_i + r_v - 1 / (1 / r_i + 1 / r_v));
     const double Evi2 = 0.5 * (r_i * r_i + r_v * r_v);
 
-    // Time-stepping parameters
-    double dt_user = 5e-5;                            /// Initial time step [s] (then it is updated according to the limits)
-    const int tot_iter = 1e10;                        /// Number of timesteps
+    // Environmental boundary conditions
+    const double h_conv = 10;                                                       /// Convective heat transfer coefficient for external heat removal [W/m^2/K]
+    const double power = 1000;                                                      /// Power at the evaporator side [W]
+    const double T_env = 280.0;                                                     /// External environmental temperature [K]
+    const double q_pp_evaporator = power / (2 * M_PI * evaporator_length * r_o);    /// Heat flux at evaporator from given power [W/m^2]
 
-    // Numerical parameters
-    const double tolerance = 1e-4;			          /// Tolerance for the convergence of Picard loop [-]
-    const int max_picard = 100;                        /// Maximum number of Picard iterations per timestep
+    // Time-stepping parameters
+    double dt_user = 1e-4;                              /// Initial time step [s] (then it is updated according to the limits)
+    double dt = dt_user;                                /// Actual used time step [s]
+    const int tot_iter = 1e10;                          /// Number of timesteps [-]
+    double time_total = 0.0;                            /// Total time elapsed [s]
+    int halves = 0;                                     /// Number of times the time step has been halved [-]
+
+    // Picard loops parameters	          
+    const int max_picard = 100;                         /// Maximum number of Picard iterations per timestep [-]
+    std::array<double, B> L_pic;                        /// Picard residuals [-]
+    std::array<bool, B> conv_var;                       /// Bool array if parameter converged or not [-]
+    std::array<double, B> pic_tol = {                   /// Tolerance for the convergence of Picard loop [-]
+        1e-5,  // rho_m
+        1e-5,  // rho_l
+        1e-6,  // alpha_m
+        1e-6,  // alpha_l
+        1e-2,  // p_m
+        1e-2,  // p_l
+        1e-4,  // v_m
+        1e-4,  // v_l
+        1e-4,  // T_m
+        1e-4,  // T_l
+        1e-4   // T_w
+    };
 
     // Mesh z positions
     std::vector<double> mesh(N, 0.0);
@@ -388,29 +401,47 @@ int main() {
     const int N_c = static_cast<int>(std::ceil(condenser_length / dz));     /// Number of nodes of the condenser region [-]
     const int N_a = N - (N_e + N_c);                                        /// Number of nodes of the adiabadic region [-]
 
-    const double T_full = 550.0;                                            /// Uniform temperature initialization [K]
+    // State variables definition and initialization
+    std::vector<double> rho_m(N, 0.01);                 /// Mixture density [kg/m3]
+    std::vector<double> rho_l(N, 1000);                 /// Liquid density [kg/m3]
+    std::vector<double> alpha_m(N, 0.9);                /// Mixture volume fraction [-]
+    std::vector<double> alpha_l(N, 0.1);                /// Liquid volume fraction [-]
+    std::vector<double> p_m(N);                         /// Mixture pressure [Pa]
+    std::vector<double> p_l(N);                         /// Liquid pressure [Pa]
+    std::vector<double> v_m(N, 100.0);                  /// Mixture velocity [m/s]
+    std::vector<double> v_l(N, -0.01);                  /// Liquid velocity [m/s]
+    std::vector<double> T_m(N);                         /// Mixture bulk temperature [K]
+    std::vector<double> T_l(N);                         /// Liquid bulk temperature [K]
+    std::vector<double> T_w(N);                         /// Wall bulk temperature [K]
 
-    const double q_pp_evaporator = power / (2 * M_PI * evaporator_length * r_o);        /// Heat flux at evaporator from given power [W/m^2]
-	std::vector<double> q_pp(N, 0.0);                                                   /// Heat flux profile [W/m^2]
+    // Secondary useful variables
+    std::vector<double> Gamma_xv(N, 0.0);                           /// Exact mass volumetric source [kg/m3s]
+    std::vector<double> Gamma_xv_lin(N, 0.0);                       /// Linearized mass volumetric source (with C coefficients) [kg/m3s]
+    std::vector<double> Gamma_xv_diff(N, 0.0);                      /// Residual between approximation and exact mass volumetric source 1 [kg/m3s]
+    std::vector<double> Gamma_xv_diff2(N, 0.0);                     /// Residual between approximation and exact mass volumetric source 2 [kg/m3s]
+    std::vector<double> Gamma_xv_approx(N, 0.0);                    /// Approximated mass volumetric source (with gamma coefficients) [kg/m3s]
+    std::vector<double> T_sur(N);                                   /// Wick-vapor surface temperature [K]
+    std::vector<double> q_pp(N, 0.0);                               /// Heat flux profile [W/m^2]
+    std::vector<double> phi_x_v(N, 0.0);                            /// Mass flux [kg/m2s]
+    std::vector<double> heat_source_wall_liquid_flux(N, 0.0);       /// Heat volumetric source from wall to liquid due to difference in temperature [W/m3]
+    std::vector<double> heat_source_liquid_wall_flux(N, 0.0);       /// Heat volumetric source from liquid to wall due to difference in temperature [W/m3]
+    std::vector<double> heat_source_vapor_liquid_phase(N, 0.0);     /// Heat volumetric source from vapor to liquid due to phase change [W/m3]
+    std::vector<double> heat_source_liquid_vapor_phase(N, 0.0);     /// Heat volumetric source from liquid to vapor due to phase change [W/m3]
+    std::vector<double> heat_source_vapor_liquid_flux(N, 0.0);      /// Heat volumetric source from vapor to liquid due to difference in temperature [W/m3]
+    std::vector<double> heat_source_liquid_vapor_flux(N, 0.0);      /// Heat volumetric source from liquid to vapor due to difference in temperature [W/m3]
+    std::vector<double> p_saturation(N);                            /// Saturation pressure at the temperature of the wick-vapor surface [Pa]
+    std::vector<double> DPcap(N, 0.0);                              /// Capillary pressure difference between mixture and vapor [Pa]
+    std::vector<double> energy_wall(N, 0.0);                        /// Wall internal energy [J]
+    std::vector<double> energy_liquid(N, 0.0);                      /// Liquid internal energy [J]
+    std::vector<double> energy_vapor(N, 0.0);                       /// Mixture internal energy [J]
 
-    std::vector<double> rho_m(N, 0.01);
-    std::vector<double> rho_l(N, 1000);
-    std::vector<double> alpha_m(N, 0.9);
-    std::vector<double> alpha_l(N, 0.1);
-    std::vector<double> p_m(N);
-    std::vector<double> p_l(N);
-    std::vector<double> v_m(N, 1.0);
-    std::vector<double> v_l(N, -0.001);
-    std::vector<double> T_m(N);
-    std::vector<double> T_l(N);
-    std::vector<double> T_w(N);
+    double h_xv_v;                                                  /// Specific enthalpy [J/kg] of vapor upon phase change between wick and vapor
+    double h_vx_x;                                                  /// Specific enthalpy [J/kg] of wick upon phase change between vapor and wick
 
-    std::vector<double> T_sur(N);
+    const double T_left = 800.0;                        /// First node initialization temperature [K]
+    const double T_right = 750.0;                       /// Last node initialization temperature [K]
 
-    const double T_left = 520.0;
-    const double T_right = 480.0;
-
-    // Temperature initialization
+    // Temperatures initialization
     for (int i = 0; i < N; ++i) {
 
         const double s = static_cast<double>(i) / (N - 1);
@@ -438,10 +469,25 @@ int main() {
     std::vector<double> T_l_old = T_l;
     std::vector<double> T_w_old = T_w;
 
+    /// Iter variables
+    std::vector<double> rho_m_iter = rho_m;
+    std::vector<double> rho_l_iter = rho_l;
+    std::vector<double> alpha_m_iter = alpha_m;
+    std::vector<double> alpha_l_iter = alpha_l;
+    std::vector<double> p_m_iter = p_m;
+    std::vector<double> p_l_iter = p_l;
+    std::vector<double> v_m_iter = v_m;
+    std::vector<double> v_l_iter = v_l;
+    std::vector<double> T_m_iter = T_m;
+    std::vector<double> T_l_iter = T_l;
+    std::vector<double> T_w_iter = T_w;
+
     std::vector<double> T_sur_iter = T_sur;
+
     std::vector<double> phi_x_v_iter(N, 0.0);
     std::vector<double> Gamma_xv_iter(N, 0.0);
 
+    // Global balance variables
     double E_wall_old = 0.0;
     double E_wall_new = 0.0;
 
@@ -457,40 +503,15 @@ int main() {
     double energy_balance = 0.0;
     double energy_diff = 0.0;
 
-    std::vector<double> rho_m_iter(N);
-    std::vector<double> rho_l_iter(N);
-    std::vector<double> alpha_m_iter(N);
-    std::vector<double> alpha_l_iter(N);
-    std::vector<double> p_m_iter(N);
-    std::vector<double> p_l_iter(N);
-    std::vector<double> v_m_iter(N);
-    std::vector<double> v_l_iter(N);
-    std::vector<double> T_m_iter(N);
-    std::vector<double> T_l_iter(N);
-    std::vector<double> T_w_iter(N);
+    double mass_tot = 0.0;
 
     // Blocks definition
     std::vector<SparseBlock> L(N), D(N), R(N);
     std::vector<VecBlock> Q(N), X(N);
 
-    // Secondary useful variables
-    std::vector<double> Gamma_xv(N, 0.0);
-    std::vector<double> Gamma_xv_lin(N, 0.0);
-    std::vector<double> Gamma_xv_diff(N, 0.0);
-    std::vector<double> Gamma_xv_diff2(N, 0.0);
-    std::vector<double> Gamma_xv_approx(N, 0.0);
-    std::vector<double> phi_x_v(N, 0.0);
-    std::vector<double> heat_source_wall_liquid_flux(N, 0.0);
-    std::vector<double> heat_source_liquid_wall_flux(N, 0.0);
-    std::vector<double> heat_source_vapor_liquid_phase(N, 0.0);
-    std::vector<double> heat_source_liquid_vapor_phase(N, 0.0);
-    std::vector<double> heat_source_vapor_liquid_flux(N, 0.0);
-    std::vector<double> heat_source_liquid_vapor_flux(N, 0.0);
-    std::vector<double> p_saturation(N);
-    std::vector<double> DPcap(N, 0.0);
-    std::vector<double> energy_wall(N, 0.0);
-    std::vector<double> energy_liquid(N, 0.0);
-    std::vector<double> energy_vapor(N, 0.0);
+    #pragma endregion
+
+    #pragma region output
 
     // Create result folder
     int new_case = 0;
@@ -576,21 +597,6 @@ int main() {
     std::cout << "Threads: " << omp_get_max_threads() << "\n";
 
     double start = omp_get_wtime();
-    
-    // Number of times the time step has been halved
-    int halves = 0;
-
-    // L1 error for picard convergence
-    double L1 = 0.0;
-
-    // Actual time step
-    double dt;
-
-    // Total time elapsed
-    double time_total = 0.0;
-
-    double h_xv_v;      /// Specific enthalpy [J/kg] of vapor upon phase change between wick and vapor
-    double h_vx_x;      /// Specific enthalpy [J/kg] of wick upon phase change between vapor and wick
 
 	// Time-stepping loop
     for(int n = 0; n < tot_iter; ++n) {
@@ -680,7 +686,7 @@ int main() {
                 // else if (b <= 0.9962) Omega = 0.8959 + 2.6457 * b;
                 // else Omega = 2.0 * b * std::sqrt(M_PI);
 
-                Omega = 1.0;
+                double Omega = 1.0;
 
                 // const double fac = (2.0 * r_v * eps_s * beta) / (r_i * r_i);        /// Useful factor in the coefficients calculation [s / m^2]
 
@@ -824,7 +830,7 @@ int main() {
 
                 const double alpha_m0 = r_v * r_v / (r_i * r_i);
                 const double r_p = 1e-5;
-                const double surf_ten_value = surf_ten(T_l_iter[i]);
+                const double surf_ten_value = vapor_sodium::surf_ten(T_l_iter[i]);
 
                 const double Lambda = 3 * r_v / (eps_s * r_p) * (alpha_m_iter[i] - alpha_m0);
                 DPcap[i] = 0.0;
@@ -1308,10 +1314,14 @@ int main() {
 
                 Q[i][3] = 0.0
 
-                    // Temporal term
-                    + (alpha_l_iter[i] * cp_l_p * T_l_iter[i] * rho_l_old[i]) / dt
-                    + (alpha_l_iter[i] * cp_l_p * T_l_old[i] * rho_l_iter[i]) / dt
-                    + (alpha_l_old[i] * cp_l_p * T_l_iter[i] * rho_l_iter[i]) / dt
+                    // Temporal term (cross terms)
+                    // + (alpha_l_iter[i] * cp_l_p * T_l_iter[i] * rho_l_old[i]) / dt
+                    // + (alpha_l_iter[i] * cp_l_p * T_l_old[i] * rho_l_iter[i]) / dt
+                    // + (alpha_l_old[i] * cp_l_p * T_l_iter[i] * rho_l_iter[i]) / dt
+
+                    // Temporal term (conservative terms)
+                    + 2 * (alpha_l_iter[i] * cp_l_p * T_l_iter[i] * rho_l_iter[i]) / dt
+                    + (alpha_l_old[i] * cp_l_p * T_l_old[i] * rho_l_old[i]) / dt
 
                     // Convective term
                     + 3 * (
@@ -1507,10 +1517,20 @@ int main() {
 
                 Q[i][5] =
 
-                    // Temporal term (central differeces)
-                    + (alpha_m_iter[i] * rho_m_iter[i] + alpha_m_iter[i + 1] * rho_m_iter[i + 1]) * v_m_old[i] / (2 * dt)
-                    + ((alpha_m_iter[i] + alpha_m_iter[i + 1]) * v_m_iter[i] * (rho_m_old[i] + rho_m_old[i + 1])) / (4 * dt)
-                    + ((rho_m_iter[i] + rho_m_iter[i + 1]) * v_m_iter[i] * (alpha_m_old[i] + alpha_m_old[i + 1])) / (4 * dt)
+                    // Temporal term (cross terms)
+                    // + (alpha_m_iter[i] * rho_m_iter[i] + alpha_m_iter[i + 1] * rho_m_iter[i + 1]) * v_m_old[i] / (2 * dt)
+                    // + ((alpha_m_iter[i] + alpha_m_iter[i + 1]) * v_m_iter[i] * (rho_m_old[i] + rho_m_old[i + 1])) / (4 * dt)
+                    // + ((rho_m_iter[i] + rho_m_iter[i + 1]) * v_m_iter[i] * (alpha_m_old[i] + alpha_m_old[i + 1])) / (4 * dt)
+
+                    // Temporal term (conservative terms)
+                    + (alpha_m_old[i] * rho_m_old[i] + alpha_m_old[i + 1] * rho_m_old[i + 1]) * v_m_old[i] / (4 * dt)
+                    + (alpha_m_iter[i] * rho_m_iter[i] + alpha_m_iter[i + 1] * rho_m_iter[i + 1]) * v_m_iter[i] / (4 * dt)
+
+                    + ((alpha_m_old[i] + alpha_m_old[i + 1]) * v_m_old[i] * (rho_m_old[i] + rho_m_old[i + 1])) / (8 * dt)
+                    + ((alpha_m_iter[i] + alpha_m_iter[i + 1]) * v_m_iter[i] * (rho_m_iter[i] + rho_m_iter[i + 1])) / (8 * dt)
+
+                    + ((rho_m_old[i] + rho_m_old[i + 1]) * v_m_old[i] * (alpha_m_old[i] + alpha_m_old[i + 1])) / (8 * dt)
+                    + ((rho_m_iter[i] + rho_m_iter[i + 1]) * v_m_iter[i] * (alpha_m_iter[i] + alpha_m_iter[i + 1])) / (8 * dt)
 
                     // Convective term
                       - 3 * H(v_m_iter[i]) * (
@@ -1613,9 +1633,19 @@ int main() {
                 Q[i][6] =
 
                     // Temporal term (central differeces)
-                    + eps_v * (alpha_l_iter[i] * rho_l_iter[i] + alpha_l_iter[i + 1] * rho_l_iter[i + 1]) * v_l_old[i] / (2 * dt)
-                    + eps_v * ((alpha_l_iter[i] + alpha_l_iter[i + 1]) * v_l_iter[i] * (rho_l_old[i] + rho_l_old[i + 1])) / (4 * dt)
-                    + eps_v * ((rho_l_iter[i] + rho_l_iter[i + 1]) * v_l_iter[i] * (alpha_l_old[i] + alpha_l_old[i + 1])) / (4 * dt)
+                    // + eps_v * (alpha_l_iter[i] * rho_l_iter[i] + alpha_l_iter[i + 1] * rho_l_iter[i + 1]) * v_l_old[i] / (2 * dt)
+                    // + eps_v * ((alpha_l_iter[i] + alpha_l_iter[i + 1]) * v_l_iter[i] * (rho_l_old[i] + rho_l_old[i + 1])) / (4 * dt)
+                    // + eps_v * ((rho_l_iter[i] + rho_l_iter[i + 1]) * v_l_iter[i] * (alpha_l_old[i] + alpha_l_old[i + 1])) / (4 * dt)
+
+                    // Temporal term (conservative terms)
+                    + eps_v * (alpha_l_old[i] * rho_l_old[i] + alpha_l_old[i + 1] * rho_l_old[i + 1]) * v_l_old[i] / (4 * dt)
+                    + eps_v * (alpha_l_iter[i] * rho_l_iter[i] + alpha_l_iter[i + 1] * rho_l_iter[i + 1]) * v_l_iter[i] / (4 * dt)
+
+                    + eps_v * ((alpha_l_old[i] + alpha_l_old[i + 1]) * v_l_old[i] * (rho_l_old[i] + rho_l_old[i + 1])) / (8 * dt)
+                    + eps_v * ((alpha_l_iter[i] + alpha_l_iter[i + 1]) * v_l_iter[i] * (rho_l_iter[i] + rho_l_iter[i + 1])) / (8 * dt)
+
+                    + eps_v * ((rho_l_old[i] + rho_l_old[i + 1]) * v_l_old[i] * (alpha_l_old[i] + alpha_l_old[i + 1])) / (8 * dt)
+                    + eps_v * ((rho_l_iter[i] + rho_l_iter[i + 1]) * v_l_iter[i] * (alpha_l_iter[i] + alpha_l_iter[i + 1])) / (8 * dt)
 
                     // Convective term
                     - 3 * eps_v * H(v_l_iter[i]) * (
@@ -1815,6 +1845,95 @@ int main() {
             solve_block_tridiag(L, D, R, Q, X);
 
             // Calculate Picard error
+            L_pic = {};
+
+            double Aold, Anew, denom, eps;
+
+            for (int i = 0; i < N; ++i) {
+
+                // rho_m
+                Aold = rho_m_iter[i];
+                Anew = X[i][0];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[0] += eps;
+
+                // rho_l
+                Aold = rho_l_iter[i];
+                Anew = X[i][1];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[1] += eps;
+
+                // alpha_m
+                Aold = alpha_m_iter[i];
+                Anew = X[i][2];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[2] += eps;
+
+                // alpha_l
+                Aold = alpha_l_iter[i];
+                Anew = X[i][3];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[3] += eps;
+
+                // p_m
+                Aold = p_m_iter[i];
+                Anew = X[i][4];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[4] += eps;
+
+                // p_l
+                Aold = p_l_iter[i];
+                Anew = X[i][5];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[5] += eps;
+
+                // v_m
+                Aold = v_m_iter[i];
+                Anew = X[i][6];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[6] += eps;
+
+                // v_l
+                Aold = v_l_iter[i];
+                Anew = X[i][7];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[7] += eps;
+
+                // T_m
+                Aold = T_m_iter[i];
+                Anew = X[i][8];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[8] += eps;
+
+                // T_l
+                Aold = T_l_iter[i];
+                Anew = X[i][9];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[9] += eps;
+
+                // T_w
+                Aold = T_w_iter[i];
+                Anew = X[i][10];
+                denom = 0.5 * (std::abs(Aold) + std::abs(Anew));
+                eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
+                L_pic[10] += eps;
+            }
+
+            for (int k = 0; k < B; ++k)
+                L_pic[k] /= N;
+
+            // Calculate Picard error
+            /*
             L1 = 0.0;
 
 			double Aold, Anew, denom, eps;
@@ -1887,6 +2006,9 @@ int main() {
                 eps = denom > 1e-12 ? std::abs((Anew - Aold) / denom) : std::abs(Anew - Aold);
                 L1 += eps;
             }
+            */
+
+            // L1 /= (N * B);
 
             // Update vectors from X
             for (int i = 0; i < N; ++i) {
@@ -1908,7 +2030,14 @@ int main() {
                 Gamma_xv_approx[i] = aGamma[i] + bGamma[i] * T_sur[i] + cGamma[i] * (p_m[i] - p_m_iter[i]);
             }
 
-            if (L1 < tolerance) {
+            for (int k = 0; k < B; ++k)
+                conv_var[k] = (L_pic[k] < pic_tol[k]);
+
+            bool conv_all = true;
+            for (int k = 0; k < B; ++k)
+                conv_all = conv_all && conv_var[k];
+
+            if (conv_all) {
 
                 E_wall_old = E_wall_new;
                 E_liquid_old = E_liquid_new;
@@ -1918,6 +2047,8 @@ int main() {
                 E_tot_new = 0.0;
 
                 energy_balance = 0.0;
+
+                mass_tot = 0.0;
 
                 for (int i = 0; i < N; ++i) {
 
@@ -1930,6 +2061,8 @@ int main() {
                     E_tot_new += E_vapor_new;
 
                     energy_balance += dt * lateral_surface * q_pp[i];
+
+                    mass_tot += Gamma_xv[i];
                 }
 
                 energy_diff = (E_tot_new - E_tot_old) - energy_balance; // Should be zero
