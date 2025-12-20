@@ -43,7 +43,7 @@ namespace vapor_sodium {
       *
       * @param T Temperature [K]
       * @return Enthalpy of sodium vapor [J/kg]
-      */
+
     inline double h(double T) {
         constexpr double T_min = 1170.525;
         constexpr double T_max = 6000.0;
@@ -70,6 +70,38 @@ namespace vapor_sodium {
 
         const double M_kg_per_mol = 22.98976928e-3;
         return (H_kJ_per_mol * 1000.0) / M_kg_per_mol; // J/kg
+    }      */
+
+    /// Enthalpy of liquid sodium [J/kg]
+    /// CODATA correlation
+    inline double h_liquid_sodium(double T) {
+        // Numerical safety only
+        if (T < 300.0)  T = 300.0;
+        if (T > 2500.0) T = 2500.0;
+
+        return (
+            -365.77
+            + 1.6582e0 * T
+            - 4.2395e-4 * T * T
+            + 1.4847e-7 * T * T * T
+            + 2992.6 / T
+            ) * 1e3;   // J/kg
+    }
+
+    /// Enthalpy of vaporization of sodium [J/kg]
+    /// Fink (1995)
+    inline double h_vap_sodium(double T) {
+        // Numerical safety
+        if (T < 300.0)  T = 300.0;
+        if (T > 2500.0) T = 2500.0;
+
+        return (2128.4 + 0.86496 * T) * 1e3; // J/kg
+    }
+
+    /// Enthalpy of sodium vapor [J/kg]
+    /// h_v = h_l,CODATA + h_vap,Fink95
+    inline double h(double T) {
+        return h_liquid_sodium(T) + h_vap_sodium(T);
     }
 
     /**

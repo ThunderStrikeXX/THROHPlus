@@ -407,8 +407,8 @@ int main() {
 
     std::vector<double> T_sur(N);
 
-    const double T_left = 560.0;
-    const double T_right = 540.0;
+    const double T_left = 520.0;
+    const double T_right = 480.0;
 
     // Temperature initialization
     for (int i = 0; i < N; ++i) {
@@ -589,6 +589,9 @@ int main() {
     // Total time elapsed
     double time_total = 0.0;
 
+    double h_xv_v;      /// Specific enthalpy [J/kg] of vapor upon phase change between wick and vapor
+    double h_vx_x;      /// Specific enthalpy [J/kg] of wick upon phase change between vapor and wick
+
 	// Time-stepping loop
     for(int n = 0; n < tot_iter; ++n) {
 
@@ -644,9 +647,6 @@ int main() {
                 p_saturation[i] = vapor_sodium::P_sat(T_sur_iter[i]);                                  /// Saturation pressure [Pa]         
                 const double dPsat_dT = vapor_sodium::dP_sat_dT(T_sur_iter[i]);   /// Derivative of the saturation pressure wrt T [Pa/K]   
 
-                double h_xv_v;      /// Specific enthalpy [J/kg] of vapor upon phase change between wick and vapor
-                double h_vx_x;      /// Specific enthalpy [J/kg] of wick upon phase change between vapor and wick
-
                 if (Gamma_xv_iter[i] >= 0.0) {
 
                     // Evaporation case
@@ -673,18 +673,37 @@ int main() {
                 }
 
                 // Coefficients for the expansion around the old timestep
-                const double beta = 1.0 / std::sqrt(2 * M_PI * Rv * T_sur_iter[i]);
+                // const double beta = 1.0 / std::sqrt(2 * M_PI * Rv * T_sur_iter[i]);
                 const double b = -phi_x_v_iter[i] / (p_m_iter[i] * std::sqrt(2.0 / (Rv * T_m_iter[i])));
 
-                if (b < 0.1192) Omega = 1.0 + b * std::sqrt(M_PI);
-                else if (b <= 0.9962) Omega = 0.8959 + 2.6457 * b;
-                else Omega = 2.0 * b * std::sqrt(M_PI);
+                // if (b < 0.1192) Omega = 1.0 + b * std::sqrt(M_PI);
+                // else if (b <= 0.9962) Omega = 0.8959 + 2.6457 * b;
+                // else Omega = 2.0 * b * std::sqrt(M_PI);
 
-                const double fac = (2.0 * r_v * eps_s * beta) / (r_i * r_i);        /// Useful factor in the coefficients calculation [s / m^2]
+                Omega = 1.0;
 
-                bGamma[i] = -(Gamma_xv_iter[i] / (2.0 * T_sur_iter[i])) + fac * sigma_e * dPsat_dT; /// b coefficient [kg/(m3 s K)] 
-                aGamma[i] = 1.5 * Gamma_xv_iter[i] + fac * sigma_e * dPsat_dT * T_sur_iter[i];      /// a coefficient [kg/(m3 s)]
-                cGamma[i] = -fac * sigma_c * Omega;                                       /// c coefficient [s/m2]
+                // const double fac = (2.0 * r_v * eps_s * beta) / (r_i * r_i);        /// Useful factor in the coefficients calculation [s / m^2]
+
+                // bGamma[i] = -(Gamma_xv_iter[i] / (2.0 * T_sur_iter[i])) + fac * sigma_e * dPsat_dT; /// b coefficient [kg/(m3 s K)] 
+                // aGamma[i] = 1.5 * Gamma_xv_iter[i] + fac * sigma_e * dPsat_dT * T_sur_iter[i];      /// a coefficient [kg/(m3 s)]
+                // cGamma[i] = -fac * sigma_c * Omega;                                       /// c coefficient [s/m2]
+
+                const double Kgeom = 2.0 * r_v * eps_s / (r_i * r_i);
+                const double beta = 1.0 / std::sqrt(2.0 * M_PI * Rv * T_sur_iter[i]);
+                const double betap = -0.5 * beta / T_sur_iter[i];
+
+                const double Psat = vapor_sodium::P_sat(T_sur_iter[i]);
+                const double dPsat = vapor_sodium::dP_sat_dT(T_sur_iter[i]);
+
+                const double Gk = Kgeom * beta * (sigma_e * Psat - sigma_c * p_m_iter[i]); // EXACT Gamma at k
+
+                cGamma[i] = Kgeom * beta * (-sigma_c);  // dGamma/dp_m
+
+                bGamma[i] = Kgeom * (betap * (sigma_e * Psat - sigma_c * p_m_iter[i])
+                    + beta * (sigma_e * dPsat)); // dGamma/dT_sur
+
+                aGamma[i] = Gk - bGamma[i] * T_sur_iter[i];
+
 
                 const double Ex3 = H_xm + (h_vx_x * r_i * r_i) / (2.0 * r_v) * bGamma[i];
                 const double Ex4 = -k_x + H_xm * r_v + h_vx_x * r_i * r_i / 2.0 * bGamma[i];
@@ -884,8 +903,11 @@ int main() {
 
                 Q[i][0] = 0.0
 
-                    // Source term
+                    // Source term (implicit)
                     + C45
+
+                    // Source term (explicit)
+                    // + Gamma_xv_iter[i]
 
                     // Temporal term
                     + (rho_m_old[i] * alpha_m_old[i]) / dt
@@ -998,8 +1020,11 @@ int main() {
                         - eps_v * (alpha_l_iter[i] * rho_l_iter[i] * v_l_iter[i - 1] * (1 - H(v_l_iter[i - 1])))
                         ) / dz
 
-                    // Source term
+                    // Source term (implicit)
                     - C45
+
+                    // Source term (explicit)
+                    // - Gamma_xv_iter[i]
                     ;
 
                 add(L[i], 1, 1, 0.0
@@ -1879,7 +1904,7 @@ int main() {
 
                 // Check linearization error of mass source
                 Gamma_xv_diff[i] = Gamma_xv_approx[i] - Gamma_xv[i];
-                Gamma_xv_diff2[i] = Gamma_xv_approx[i] - Gamma_xv[i];
+                Gamma_xv_diff2[i] = Gamma_xv_approx[i] - Gamma_xv_lin[i];
                 Gamma_xv_approx[i] = aGamma[i] + bGamma[i] * T_sur[i] + cGamma[i] * (p_m[i] - p_m_iter[i]);
             }
 

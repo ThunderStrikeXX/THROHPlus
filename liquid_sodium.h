@@ -64,7 +64,6 @@ namespace liquid_sodium {
       *     Cp° = A + B*t + C*t^2 + D*t^3 + E/t^2  [J/mol/K]
       *     H° - H°298.15 = A*t + B*t^2/2 + C*t^3/3 + D*t^4/4 - E/t + F - H  [kJ/mol]
       *     with t = T/1000
-      */
     inline double h(double T) {
 
         const double T_min = 370.98, T_max = 1170.525;
@@ -88,5 +87,21 @@ namespace liquid_sodium {
         // Convert to J/kg
         const double M_kg_per_mol = 22.98976928e-3; // Molar mass Na
         return (H_kJ_per_mol * 1000.0) / M_kg_per_mol;
+    }      */
+
+    /// Enthalpy of liquid sodium [J/kg]
+    /// CODATA correlation
+    inline double h(double T) {
+        // Numerical safety only
+        if (T < 300.0)  T = 300.0;
+        if (T > 2500.0) T = 2500.0;
+
+        return (
+            -365.77
+            + 1.6582e0 * T
+            - 4.2395e-4 * T * T
+            + 1.4847e-7 * T * T * T
+            + 2992.6 / T
+            ) * 1e3;   // J/kg
     }
 }
